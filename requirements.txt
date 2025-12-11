@@ -1,0 +1,10 @@
+streamlit
+crewai
+langchain_openai
+sqlalchemy
+mysql-connector-python
+pandas
+rapidfuzz
+unidecode
+python-dotenv
+tabulate

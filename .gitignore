@@ -1,0 +1,23 @@
+# .gitignore
+
+# Arquivos de Ambiente (SEGURANÇA CRÍTICA)
+.env
+.venv
+venv/
+env/
+
+# Python Cache e Logs
+__pycache__/
+*.pyc
+*.log
+
+# Arquivos de Sistema
+.DS_Store
+
+# Saídas geradas pelo sistema
+reports/*.csv
+dados_brutos/
+
+# IDEs
+.vscode/
+.idea/
