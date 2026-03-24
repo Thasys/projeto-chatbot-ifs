@@ -1,0 +1,241 @@
+name: Daily ETL Pipeline - IFS Transparência
+
+on:
+  # Executar automaticamente todo dia às 23:00 UTC (20:00 BRT)
+  schedule:
+    - cron: '0 23 * * *'
+  
+  # Permitir disparo manual via GitHub UI
+  workflow_dispatch:
+    inputs:
+      force_full_sync:
+        description: 'Forçar sincronização completa (não apenas últimos 180 dias)'
+        required: false
+        default: 'false'
+
+jobs:
+  etl-execution:
+    runs-on: ubuntu-latest
+    
+    # Configurar timeout para evitar jobs que ficam pendurados
+    timeout-minutes: 60
+    
+    steps:
+      # 1. Fazer checkout do código mais recente
+      - name: 📥 Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      
+      # 2. Configurar Python environment
+      - name: 🐍 Setup Python 3.9
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.9'
+          cache: 'pip'
+      
+      # 3. Instalar dependências
+      - name: 📦 Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          # Instalar dependências extras se necessário
+          pip install mysql-connector-python sqlalchemy pandas
+      
+      # 4. Executar validação de .env
+      - name: 🔐 Validate environment variables
+        run: |
+          python -c "
+          import os
+          required_vars = [
+            'DB_HOST', 'DB_PORT', 'DB_NAME', 'DB_USER', 'DB_PASS',
+            'API_KEY'
+          ]
+          missing = [var for var in required_vars if not os.getenv(var)]
+          if missing:
+            print(f'❌ Variáveis faltando: {missing}')
+            exit(1)
+          print('✅ Todas as variáveis de ambiente estão configuradas')
+          "
+        env:
+          DB_HOST: ${{ secrets.DB_HOST }}
+          DB_PORT: ${{ secrets.DB_PORT }}
+          DB_NAME: ${{ secrets.DB_NAME }}
+          DB_USER: ${{ secrets.DB_USER }}
+          DB_PASS: ${{ secrets.DB_PASS }}
+          API_KEY: ${{ secrets.API_KEY }}
+      
+      # 5. Rodar ETL Pipeline
+      - name: 🚀 Run ETL Pipeline
+        run: |
+          echo "🔄 Iniciando coleta de dados do Portal da Transparência..."
+          python etl_scripts/main.py
+          echo "✅ ETL Pipeline concluído com sucesso!"
+        env:
+          DB_HOST: ${{ secrets.DB_HOST }}
+          DB_PORT: ${{ secrets.DB_PORT }}
+          DB_NAME: ${{ secrets.DB_NAME }}
+          DB_USER: ${{ secrets.DB_USER }}
+          DB_PASS: ${{ secrets.DB_PASS }}
+          API_KEY: ${{ secrets.API_KEY }}
+        continue-on-error: false
+      
+      # 6. Capturar logs para artifact
+      - name: 📋 Capture ETL logs
+        if: always()
+        run: |
+          mkdir -p etl-logs-artifacts
+          if [ -f "etl_logs.log" ]; then
+            cp etl_logs.log etl-logs-artifacts/etl_$(date +%Y%m%d_%H%M%S).log
+          fi
+          if [ -f "etl_scripts/etl_output.log" ]; then
+            cp etl_scripts/etl_output.log etl-logs-artifacts/etl_detailed_$(date +%Y%m%d_%H%M%S).log
+          fi
+      
+      # 7. Upload logs como artifacts (mantém histórico)
+      - name: 💾 Upload ETL logs to artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: etl-logs-${{ github.run_number }}
+          path: etl-logs-artifacts/
+          retention-days: 30
+      
+      # 8. Verificar status do banco de dados pós-ETL
+      - name: ✅ Verify database integrity
+        run: |
+          python -c "
+          from db_connection import DBConnection
+          import logging
+          
+          logging.basicConfig(level=logging.INFO)
+          logger = logging.getLogger(__name__)
+          
+          try:
+            db = DBConnection()
+            
+            # Verificar conexão
+            if not db.is_connected():
+              logger.error('❌ Falha na conexão com BD')
+              exit(1)
+            
+            # Contar registros em fato_execucao
+            result = db.execute_query('SELECT COUNT(*) as total FROM fato_execucao')
+            count = result[0][0] if result else 0
+            logger.info(f'✅ Banco de dados íntegro. Total registros: {count:,}')
+            
+            db.close()
+          except Exception as e:
+            logger.error(f'❌ Erro ao verificar BD: {str(e)}')
+            exit(1)
+          "
+        env:
+          DB_HOST: ${{ secrets.DB_HOST }}
+          DB_PORT: ${{ secrets.DB_PORT }}
+          DB_NAME: ${{ secrets.DB_NAME }}
+          DB_USER: ${{ secrets.DB_USER }}
+          DB_PASS: ${{ secrets.DB_PASS }}
+        continue-on-error: true
+      
+      # 9. Notificar sucesso no Slack (opcional)
+      - name: 📢 Notify Slack - Success
+        if: success()
+        uses: slackapi/slack-github-action@v1
+        with:
+          payload: |
+            {
+              "text": "✅ ETL Pipeline - IFS Transparência",
+              "blocks": [
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "*✅ ETL Pipeline Concluído com Sucesso*\n*Data:* ${{ github.event.schedule || 'Manual' }}\n*Branch:* ${{ github.ref }}\n*Run:* ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+                  }
+                }
+              ]
+            }
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+          SLACK_WEBHOOK_TYPE: INCOMING_WEBHOOK
+        continue-on-error: true
+      
+      # 10. Notificar falha no Slack (opcional)
+      - name: 📢 Notify Slack - Failure
+        if: failure()
+        uses: slackapi/slack-github-action@v1
+        with:
+          payload: |
+            {
+              "text": "❌ ETL Pipeline - IFS Transparência",
+              "blocks": [
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "*❌ Falha no ETL Pipeline*\n*Data:* ${{ github.event.schedule || 'Manual' }}\n*Branch:* ${{ github.ref }}\n*Run:* ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}\n\nPor favor, verificar os logs!"
+                  }
+                }
+              ]
+            }
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+          SLACK_WEBHOOK_TYPE: INCOMING_WEBHOOK
+        continue-on-error: true
+      
+      # 11. Criar relatório de resumo
+      - name: 📊 Create execution summary
+        if: always()
+        run: |
+          cat > etl-execution-summary.txt << 'EOF'
+          ========================================
+          ETL Pipeline - Relatório de Execução
+          ========================================
+          
+          Data/Hora: $(date '+%d/%m/%Y às %H:%M:%S')
+          Status: ${{ job.status }}
+          Workflow: ${{ github.workflow }}
+          Branch: ${{ github.ref }}
+          Commit: ${{ github.sha }}
+          
+          ========================================
+          Próxima Execução Agendada:
+          Diariamente às 23:00 UTC (20:00 BRT)
+          
+          ========================================
+          Para ver logs completos:
+          ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          EOF
+          cat etl-execution-summary.txt
+      
+      # 12. Commit de logs se houver mudanças (opcional - requer permissão)
+      - name: 📝 Commit ETL logs
+        if: always()
+        continue-on-error: true
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action - ETL Pipeline"
+          git add etl_logs.log
+          git commit -m "🤖 [AUTO] ETL logs updated - $(date '+%Y-%m-%d %H:%M:%S')" || true
+          git push origin ${{ github.ref }} || true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # Job de notificação final
+  notification:
+    runs-on: ubuntu-latest
+    if: always()
+    needs: etl-execution
+    
+    steps:
+      - name: 📌 Summarize workflow
+        run: |
+          echo "## ETL Pipeline Execution Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Status:** ${{ needs.etl-execution.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Time:** $(date '+%Y-%m-%d %H:%M:%S UTC')" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Next Scheduled Run" >> $GITHUB_STEP_SUMMARY
+          echo "- **When:** Daily at 23:00 UTC (20:00 BRT)" >> $GITHUB_STEP_SUMMARY
+          echo "- **What:** Automatic data collection from Portal da Transparência" >> $GITHUB_STEP_SUMMARY
+          echo "- **Target:** IFS Database" >> $GITHUB_STEP_SUMMARY
