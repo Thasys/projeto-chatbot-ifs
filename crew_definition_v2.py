@@ -298,10 +298,10 @@ class IFSCrewV2:
                 signal.alarm(timeout)
 
             resultado = crew.kickoff()
-            
+
             if platform.system() != 'Windows':
                 signal.alarm(0)  # Cancelar alarm
-            
+
             return resultado
 
         except TimeoutError as e:
@@ -327,23 +327,27 @@ class IFSCrewV2:
             }
         """
 
+        import signal
+        import platform
+        from datetime import datetime, timedelta
+
+        def timeout_handler(signum, frame):
+            raise TimeoutError(f"Query timeout após {timeout}s")
+
+        # SIGALRM só existe em Unix/Linux, não no Windows
+        use_alarm = platform.system() != 'Windows'
+        
         try:
-            import signal
-            import platform
-
-            def timeout_handler(signum, frame):
-                raise TimeoutError(f"Query timeout após {timeout}s")
-
-            # SIGALRM só existe em Unix/Linux, não no Windows
-            if platform.system() != 'Windows':
+            # Inicia alarm (apenas Unix/Linux)
+            if use_alarm:
                 signal.signal(signal.SIGALRM, timeout_handler)
                 signal.alarm(timeout)
+                logger.debug(f"⏰ Signal alarm ativado para {timeout}s")
 
             # Executar crew
+            logger.info(f"🚀 Crew iniciando para: {user_question[:50]}...")
             resultado = crew.kickoff()
-            
-            if platform.system() != 'Windows':
-                signal.alarm(0)
+            logger.info(f"✅ Crew completado com sucesso")
 
             # ========== P0.3: EXTRAIR METADADOS ==========
             # Analisar resposta para determinar confiança
@@ -372,11 +376,12 @@ class IFSCrewV2:
             )
 
             # Criar metadados
+            now = datetime.now()
             metadata = ResponseMetadata(
                 confidence=confidence,
-                period_start=datetime.now().replace(month=1, day=1).strftime('%Y-%m-%d'),
-                period_end=datetime.now().strftime('%Y-%m-%d'),
-                data_freshness_date=datetime.now().strftime('%Y-%m-%d'),
+                period_start=now.replace(month=1, day=1).strftime('%Y-%m-%d'),
+                period_end=now.strftime('%Y-%m-%d'),
+                data_freshness_date=now.strftime('%Y-%m-%d'),
                 warning_messages=[]
             )
 
@@ -400,7 +405,7 @@ class IFSCrewV2:
             }
 
         except TimeoutError as e:
-            logger.error(f"❌ {e}")
+            logger.error(f"❌ Timeout: {e}")
             resposta_erro = "⏱️ Operação demorou muito. Tente uma pergunta mais específica."
             return {
                 'resposta': resposta_erro,
@@ -412,7 +417,7 @@ class IFSCrewV2:
             }
 
         except Exception as e:
-            logger.error(f"❌ Erro: {e}")
+            logger.error(f"❌ Erro na execução do crew: {type(e).__name__}: {str(e)[:500]}")
             resposta_erro = f"❌ Erro no processamento. Detalhes: {str(e)[:100]}"
             return {
                 'resposta': resposta_erro,
@@ -420,5 +425,14 @@ class IFSCrewV2:
                 'metadata': ResponseMetadata(confidence=0.0),
                 'periodo_inicio': None,
                 'periodo_fim': None,
-                'warnings': ['Erro na execução']
+                'warnings': [f'Erro: {type(e).__name__}']
             }
+        
+        finally:
+            # ✅ CRÍTICO: SEMPRE cancelar o alarm, mesmo em exceção
+            if use_alarm:
+                try:
+                    signal.alarm(0)  # Cancela o alarm
+                    logger.debug("✅ Signal alarm cancelado")
+                except Exception as cancel_error:
+                    logger.warning(f"⚠️ Erro ao cancelar alarm: {cancel_error}")
