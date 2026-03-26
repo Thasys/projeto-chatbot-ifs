@@ -1,0 +1,153 @@
+version: '3.8'
+
+services:
+  # ========== SERVIÇO DE BANCO DE DADOS ==========
+  mysql:
+    image: mysql:8.0
+    container_name: ifs_mysql
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_PASS:-root}
+      MYSQL_DATABASE: ${DB_NAME:-dw_ifs_gastos}
+      MYSQL_USER: ${DB_USER:-ifs_user}
+      MYSQL_PASSWORD: ${DB_PASS:-root}
+    ports:
+      - "${DB_PORT:-3306}:3306"
+    volumes:
+      # Persistir dados do banco entre container restarts
+      - mysql_data:/var/lib/mysql
+      # Scripts de inicialização (se houver)
+      - ./init-db:/docker-entrypoint-initdb.d:ro
+    networks:
+      - ifs_network
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    environment:
+      MYSQL_ALLOW_EMPTY_PASSWORD: "no"
+
+  # ========== SERVIÇO DE APP STREAMLIT (REPLICA 1) ==========
+  app1:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: ifs_app1
+    restart: always
+    depends_on:
+      mysql:
+        condition: service_healthy
+    environment:
+      DB_HOST: mysql
+      DB_PORT: 3306
+      DB_NAME: ${DB_NAME:-dw_ifs_gastos}
+      DB_USER: ${DB_USER:-ifs_user}
+      DB_PASS: ${DB_PASS:-root}
+      API_KEY: ${API_KEY:-}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      LLM_PROVIDER: ${LLM_PROVIDER:-openai}
+      STREAMLIT_SERVER_HEADLESS: "true"
+    ports:
+      - "8501:8501"
+    volumes:
+      # Compartilhar dados com host
+      - ./reports:/app/reports
+      - ./dados_brutos:/app/dados_brutos
+    networks:
+      - ifs_network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8501/_stcore/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # ========== SERVIÇO DE APP STREAMLIT (REPLICA 2) ==========
+  app2:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: ifs_app2
+    restart: always
+    depends_on:
+      mysql:
+        condition: service_healthy
+    environment:
+      DB_HOST: mysql
+      DB_PORT: 3306
+      DB_NAME: ${DB_NAME:-dw_ifs_gastos}
+      DB_USER: ${DB_USER:-ifs_user}
+      DB_PASS: ${DB_PASS:-root}
+      API_KEY: ${API_KEY:-}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      LLM_PROVIDER: ${LLM_PROVIDER:-openai}
+      STREAMLIT_SERVER_HEADLESS: "true"
+    ports:
+      - "8502:8501"
+    volumes:
+      - ./reports:/app/reports
+      - ./dados_brutos:/app/dados_brutos
+    networks:
+      - ifs_network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8501/_stcore/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # ========== LOAD BALANCER (NGINX) ==========
+  nginx:
+    image: nginx:alpine
+    container_name: ifs_nginx
+    restart: always
+    depends_on:
+      - app1
+      - app2
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./ssl:/etc/nginx/ssl:ro  # Para HTTPS (opcional)
+    networks:
+      - ifs_network
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # ========== ETL SCHEDULER (EXECUTA AUTOMATICAMENTE) ==========
+  etl-scheduler:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: ifs_etl
+    restart: always
+    depends_on:
+      mysql:
+        condition: service_healthy
+    environment:
+      DB_HOST: mysql
+      DB_PORT: 3306
+      DB_NAME: ${DB_NAME:-dw_ifs_gastos}
+      DB_USER: ${DB_USER:-ifs_user}
+      DB_PASS: ${DB_PASS:-root}
+      API_KEY: ${API_KEY:-}
+    volumes:
+      - ./etl_scripts:/app/etl_scripts
+      - ./dados_brutos:/app/dados_brutos
+    networks:
+      - ifs_network
+    # Executar script ETL periodicamente (será integrado com GitHub Actions depois)
+    entrypoint: ["/bin/bash", "-c", "while true; do python /app/etl_scripts/main.py; sleep 86400; done"]
+
+# ========== VOLUMES PERSISTENTES ==========
+volumes:
+  mysql_data:
+    driver: local
+
+# ========== REDES ==========
+networks:
+  ifs_network:
+    driver: bridge
