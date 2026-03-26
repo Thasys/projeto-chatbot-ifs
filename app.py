@@ -6,6 +6,7 @@ import pandas as pd
 from crew_definition import IFSCrew
 from llm_factory import LLMFactory
 from db_connection import DBConnection
+from guardrails import Guardrails
 
 # --- 1. CONFIGURAÇÃO DA PÁGINA ---
 st.set_page_config(
@@ -66,7 +67,7 @@ def get_db_connection():
 # --- 4. LÓGICA DE PROCESSAMENTO ---
 
 
-def process_input(user_input):
+# def process_input(user_input):
     """Gerencia o fluxo de envio de mensagem para a CrewAI."""
     if not user_input:
         return
@@ -111,6 +112,53 @@ def process_input(user_input):
                 {"role": "assistant", "content": result})
 
             # Verifica se gerou CSV para oferecer download
+            check_for_downloads(str(result))
+
+        except Exception as e:
+            status_box.update(label="❌ Erro no processamento", state="error")
+            st.error(f"Ocorreu um erro inesperado: {str(e)}")
+
+
+def process_input(user_input):
+    if not user_input:
+        return
+
+    st.session_state.messages.append({"role": "user", "content": user_input})
+    with st.chat_message("user"):
+        st.markdown(user_input)
+
+    with st.chat_message("assistant"):
+        status_box = st.status(
+            "🧠 **Inicializando núcleo cognitivo...**", expanded=True)
+
+        try:
+            # ✅ REMOVIDO: optimizer = PerformanceLayer() (fake theater)
+            # ✅ REMOVIDO: cached_response = optimize_execution_path() (predefined answers)
+            
+            # ✅ AGORA: Usar AGENTES REAIS
+            start_time = time.time()
+
+            status_box.write(
+                "🕵️‍♂️ **Detetive de Dados:** Identificando entidades e intenção...")
+            ifs_crew = IFSCrew()
+            crew_instance = ifs_crew.get_crew(user_input)
+
+            status_box.write(
+                "👷 **Arquiteto SQL:** Consultando base de dados financeira...")
+
+            result = crew_instance.kickoff()
+
+            end_time = time.time()
+            duration = end_time - start_time
+
+            status_box.write("📊 **Analista Público:** Formatando resposta...")
+            status_box.update(
+                label=f"✅ Concluído em {duration:.2f}s", state="complete", expanded=False)
+
+            st.markdown(result)
+            st.session_state.messages.append(
+                {"role": "assistant", "content": result})
+
             check_for_downloads(str(result))
 
         except Exception as e:
@@ -194,29 +242,31 @@ st.markdown(
 if "messages" not in st.session_state:
     st.session_state.messages = []
 
-# --- TELA DE ONBOARDING (APARECE SE NÃO HÁ MENSAGENS) ---
+# ... (código anterior do app.py) ...
+
 if len(st.session_state.messages) == 0:
     st.markdown("<br>", unsafe_allow_html=True)
-    st.info("👋 Olá! Eu sou seu Agente de Transparência. Não precisa saber SQL. Apenas pergunte em português natural.")
-    st.markdown("##### 🚀 Experimente uma destas consultas:")
+    st.info("👋 Olá! Sou seu Auditor Virtual. Analiso dados financeiros do IFS com base na execução de 2024. Experimente uma consulta abaixo:")
+    
+    st.markdown("##### 🚀 Consultas Sugeridas (Demonstração):")
 
     col1, col2 = st.columns(2)
 
     with col1:
-        if st.button("🏆 Quais os 3 maiores fornecedores?", use_container_width=True):
-            process_input(
-                "Quais são os 3 maiores fornecedores pelo valor total recebido?")
 
-        if st.button("🏫 Gastos do Campus Lagarto (Junho/24)", use_container_width=True):
-            process_input(
-                "Liste os pagamentos do Campus Lagarto em Junho de 2024.")
+        if st.button("🏆 Top 3 Maiores Fornecedores (2024)", use_container_width=True):
+            process_input("Quais os 3 maiores fornecedores?")
+
+        if st.button("⚡ Total Pago à Energisa", use_container_width=True):
+            process_input("Quanto foi pago à Energisa este ano?")
 
     with col2:
-        if st.button("🏢 Quanto foi pago a Energisa?", use_container_width=True):
-            process_input("Quanto foi pago para a Energisa este ano?")
 
-        if st.button("💰 Qual o Gasto Total do IFS?", use_container_width=True):
-            process_input("Qual o valor total gasto pelo IFS em 2024?")
+        if st.button("🏫 Execução Total: Campus Propriá", use_container_width=True):
+            process_input("Qual o gasto total do Campus Propriá?")
+
+        if st.button("🎓 Gasto com Auxílio Estudantil", use_container_width=True):
+            process_input("Qual o total gasto com Auxílio Estudantil em 2024?")
 
 # --- RENDERIZA O CHAT ---
 else:

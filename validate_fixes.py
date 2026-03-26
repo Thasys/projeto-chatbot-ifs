@@ -9,7 +9,8 @@ import platform
 import logging
 
 # Setup logging
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logging.basicConfig(level=logging.INFO,
+                    format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
 print("=" * 70)
@@ -70,12 +71,12 @@ try:
     db = DBConnection()
     engine = db.get_engine()
     print("✅ Conexão com banco de dados estabelecida")
-    
+
     # Testar execute_query com None params
     from sqlalchemy import text
     result = db.execute_query("SELECT NOW() as tempo", {})
     print(f"✅ Query simples executada: {result[0]['tempo']}")
-    
+
 except Exception as e:
     print(f"⚠️  Erro na conexão (DB pode não estar online): {e}")
     print("   (Isso é esperado se MySQL não está rodando)")
@@ -111,13 +112,13 @@ try:
         periodo_dados_inicio="2024-01-01",
         periodo_dados_fim="2024-12-31"
     )
-    
+
     if success:
         print("✅ Log de auditoria inserido com sucesso")
         print("   (Parâmetros named funcionam corretamente)")
     else:
         print("⚠️  Erro ao inserir log")
-        
+
 except Exception as e:
     print(f"❌ Erro ao inserir log: {e}")
 
@@ -145,7 +146,7 @@ print("-" * 70)
 
 try:
     import signal
-    
+
     if system == 'Windows':
         print("⚠️  Windows: SIGALRM não existe (comportamento esperado)")
         print("✅ Código tratará isso corretamente com 'platform.system() check'")

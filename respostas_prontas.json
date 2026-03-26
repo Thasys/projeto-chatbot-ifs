@@ -1,0 +1,100 @@
+[
+  {
+    "id": "vague_query",
+    "gatilhos": [
+      "todos os dados",
+      "tudo",
+      "me mostre tudo",
+      "everything",
+      "me diga tudo",
+      "gaste total",
+      "gastos",
+      "qual é o gasto"
+    ],
+    "resposta": "Essa pergunta é muito abrangente. Tente ser mais específico:\n- 'Quais os 5 maiores fornecedores?' (Ranking)\n- 'Quanto foi gasto com energia?' (Total por categoria)\n- 'Gastos do Campus Lagarto em 2024?' (Filtro geográfico + temporal)"
+  },
+  {
+    "id": "help_request",
+    "gatilhos": [
+      "ajuda",
+      "help",
+      "como funciona",
+      "como usar",
+      "o que você faz",
+      "quais perguntas você responde",
+      "dúvida"
+    ],
+    "resposta": "Sou um assistente de transparência pública do IFS. Posso responder:\n✅ **Rankings**: 'Top 5 fornecedores', 'Maiores gastos por campus'\n✅ **Totalizações**: 'Quanto custou...', 'Total gasto em...'\n✅ **Buscas**: 'Gastos com material de limpeza', 'Pagamentos para Energisa'\n✅ **Relatórios**: 'Exportar dados para CSV'\n\n💡 Dica: Posso entender variações ortográficas (ex: 'Enegisa' vs 'Energisa')"
+  },
+  {
+    "id": "security_block",
+    "gatilhos": [
+      "delete",
+      "drop",
+      "update",
+      "insert",
+      "alter table",
+      "truncate",
+      "grant",
+      "revoke",
+      "dados bancários",
+      "senha",
+      "credenciais"
+    ],
+    "resposta": "❌ **Operação não permitida** por razões de segurança.\n\nEu posso apenas LER dados de transparência pública usando consultas SELECT seguras.\nNão tenho acesso a:\n- Informações financeiras sensíveis\n- Dados pessoais de funcionários\n- Senhas ou credenciais\n- Operações de modificação no banco"
+  },
+  {
+    "id": "empty_result",
+    "gatilhos": [
+      "não encontrou",
+      "não achou",
+      "zero registros",
+      "nenhum resultado",
+      "vazio"
+    ],
+    "resposta": "Nenhum resultado encontrado para sua busca. Isso pode significar:\n- A entidade não existe no banco de dados\n- O período especificado não tem dados\n- O termo foi digitado diferente do registrado\n\n💡 Tente:\n- Outro período temporal ('mês passado', '2023')\n- Variações do nome ('Energisa', 'ENERGISA', 'Empresa de Energia')\n- Uma categoria mais ampla"
+  },
+  {
+    "id": "about_ifs",
+    "gatilhos": [
+      "o que é ifs",
+      "quem é ifs",
+      "instituto federal",
+      "sobre o ifs",
+      "campus ifs"
+    ],
+    "resposta": "O **Instituto Federal de Sergipe (IFS)** é uma instituição de ensino superior federal brasileira oferecendo cursos de educação profissional e tecnológica.\n\nEste sistema expõe dados de transparência pública do IFS (gastos, fornecedores, programas) conforme Lei de Acesso à Informação (LAI).\n\nSites: ifs.edu.br | Transparência: portal.dados.gov.br"
+  },
+  {
+    "id": "data_quality",
+    "gatilhos": [
+      "dados desatualizado",
+      "quando foi atualizado",
+      "data dos dados",
+      "última atualização",
+      "how recent"
+    ],
+    "resposta": "Os dados são atualizados **mensalmente** conforme relatórios do Portal da Transparência federal.\n\nÚltima atualização: Você pode verificar no dashboard.\n\n⚠️ **Nota**: Há atraso de 1-2 meses entre a transação e a publicação (conforme legislação de transparência)."
+  },
+  {
+    "id": "specific_entity_not_found",
+    "gatilhos": [
+      "não existe",
+      "nenhuma ocorrência de",
+      "não encontrei",
+      "sei de ninguém chamado"
+    ],
+    "resposta": "Parece que essa entidade não está registrada em nosso banco de dados de transparência pública.\n\nPossíveis motivos:\n- O fornecedor nunca recebeu pagamentos do IFS\n- O nome está registrado de forma diferente\n- É uma entidade muito recente\n\nTente buscar de forma diferente ou consulte o Portal da Transparência (dados.gov.br)"
+  },
+  {
+    "id": "feedback_thanks",
+    "gatilhos": [
+      "obrigado",
+      "muito bom",
+      "funcionou",
+      "perfeito",
+      "thanks"
+    ],
+    "resposta": "😊 Fico feliz em ajudar! Se tiver mais perguntas sobre dados públicos do IFS, estou aqui.\n\nSua opinião ajuda a melhorar este sistema."
+  }
+]

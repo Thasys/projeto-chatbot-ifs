@@ -4,6 +4,9 @@
 Testa cada etapa do pipeline separadamente
 """
 
+import time
+import signal
+import platform
 import sys
 import logging
 from datetime import datetime
@@ -28,29 +31,26 @@ print()
 print("📋 TESTE 1: Signal Alarm Handling")
 print("-" * 80)
 
-import platform
-import signal
-import time
 
 system = platform.system()
 print(f"Sistema: {system}")
 
 if system != 'Windows':
     print("✅ Unix/Linux detectado - SIGALRM será testado")
-    
+
     try:
         def test_handler(signum, frame):
             raise TimeoutError("Teste de alarme")
-        
+
         signal.signal(signal.SIGALRM, test_handler)
         signal.alarm(5)
-        
+
         print("  ⏰ Alarme iniciado por 5s")
         time.sleep(2)
-        
+
         signal.alarm(0)  # Cancel
         print("  ✅ Alarme cancelado com sucesso")
-        
+
     except Exception as e:
         print(f"  ❌ Erro no teste: {e}")
 else:
@@ -104,12 +104,12 @@ try:
     db = DBConnection()
     engine = db.get_engine()
     print("✅ Conexão com BD estabelecida")
-    
+
     # Testar query simples
     from sqlalchemy import text
     result = db.execute_query("SELECT NOW() as tempo", {})
     print(f"✅ Query simples OK: {result[0]['tempo']}")
-    
+
 except Exception as e:
     print(f"❌ Erro: {e}")
     print("⚠️  BD offline? Continuando com outros testes...")
@@ -158,24 +158,28 @@ try:
     logger.info("Inicializando IFSCrewV2...")
     crew_manager = IFSCrewV2(use_json_mode=True, cache_ttl=300)
     print("✅ Crew manager inicializado")
-    
+
     # Criar crew para pergunta simples
     user_question = "Qual é o total de gastos do IFS em 2024?"
     logger.info(f"Pergunta: {user_question}")
-    
+
     crew_instance = crew_manager.get_crew(user_question)
     print(f"✅ Crew criado com 3 agentes e 3 tasks")
-    
+
     # Testar execute_with_confidence
     logger.info("Iniciando execute_with_confidence...")
-    result = crew_manager.execute_with_confidence(crew_instance, user_question, timeout=30)
-    
+    result = crew_manager.execute_with_confidence(
+        crew_instance, user_question, timeout=30)
+
     print(f"✅ Resposta recebida")
-    print(f"   - Status: {'SUCCESS' if result['resposta'] and not result['resposta'].startswith('❌') else 'ERROR'}")
+    print(
+        f"   - Status: {'SUCCESS' if result['resposta'] and not result['resposta'].startswith('❌') else 'ERROR'}")
     print(f"   - Confiança: {result['confidence']}%")
-    print(f"   - Período: {result['periodo_inicio']} a {result['periodo_fim']}")
-    print(f"   - Resposta (primeiras 100 chars): {result['resposta'][:100]}...")
-    
+    print(
+        f"   - Período: {result['periodo_inicio']} a {result['periodo_fim']}")
+    print(
+        f"   - Resposta (primeiras 100 chars): {result['resposta'][:100]}...")
+
 except Exception as e:
     logger.error(f"❌ Erro no crew: {e}")
     logger.exception("Stack trace completo:")
@@ -198,12 +202,12 @@ try:
         periodo_dados_inicio="2024-01-01",
         periodo_dados_fim="2024-12-31"
     )
-    
+
     if success:
         print("✅ Audit log inserido com sucesso")
     else:
         print("⚠️  Audit log retornou False")
-        
+
 except Exception as e:
     logger.error(f"❌ Erro ao inserir audit log: {e}")
     print(f"❌ Erro: {e}")

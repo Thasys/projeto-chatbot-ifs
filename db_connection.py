@@ -86,11 +86,11 @@ class DBConnection:
     def execute_query(self, query, params=None):
         """
         Executa query SELECT com tratamento de erro.
-        
+
         Args:
             query (str): SQL query com :named_parameters (SQLAlchemy style)
             params (dict): Dicionário com valores dos parâmetros
-            
+
         Returns:
             list: Lista de dicts com resultados
         """

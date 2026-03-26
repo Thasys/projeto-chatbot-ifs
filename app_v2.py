@@ -183,7 +183,7 @@ def process_input(user_input: str):
 
             # ========== P0.3: MOSTRAR RESPOSTA COM CONFIDENCE BADGE ==========
             st.markdown(result)
-            
+
             # Badge de confiança com cores
             if confidence >= 80:
                 badge_color = "🟢"
@@ -194,9 +194,10 @@ def process_input(user_input: str):
             else:
                 badge_color = "🔴"
                 badge_text = f"Confiança Baixa ({confidence:.0f}%)"
-            
-            st.markdown(f"{badge_color} **{badge_text}** | Período: {metadata.period_start} até {metadata.period_end}")
-            
+
+            st.markdown(
+                f"{badge_color} **{badge_text}** | Período: {metadata.period_start} até {metadata.period_end}")
+
             # Mostrar aviso se houver
             if metadata.warning_messages:
                 for warning in metadata.warning_messages:

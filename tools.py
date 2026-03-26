@@ -167,26 +167,26 @@ def execute_sql(sql_query: str):
     """
     Executes a SELECT SQL query on the 'v_financas_geral' view.
     Input must be a valid SQL string starting with SELECT.
-    
+
     Returns:
         str: Markdown formatted result or error message
     """
     import logging
     logger = logging.getLogger(__name__)
-    
+
     db = DBConnection()
     try:
         # Limpar input
         sql_query = sql_query.strip().replace("```sql", "").replace("```", "")
-        
+
         logger.debug(f"📌 SQL Query: {sql_query[:100]}...")
-        
+
         # Validar segurança
         if not sql_query.upper().startswith("SELECT"):
             error_msg = "❌ Error: Only SELECT queries are allowed for safety."
             logger.warning(error_msg)
             return error_msg
-        
+
         # Executar query
         logger.info(f"🔄 Executando query...")
         df = pd.read_sql(sql_query, db.get_engine())
@@ -199,14 +199,15 @@ def execute_sql(sql_query: str):
 
         total_rows = len(df)
         LIMIT_For_LLM = 20
-        
+
         logger.debug(f"📊 Resultado: {total_rows} linhas")
 
         try:
             # Resultado pequeno: retornar tudo
             if total_rows <= LIMIT_For_LLM:
                 resultado = df.to_markdown(index=False)
-                logger.debug(f"📋 Retornando tabela completa ({total_rows} linhas)")
+                logger.debug(
+                    f"📋 Retornando tabela completa ({total_rows} linhas)")
                 return resultado
             else:
                 # Resultado grande: retornar resumo
@@ -220,9 +221,11 @@ def execute_sql(sql_query: str):
                         try:
                             totals_df = df[cols].sum()
                             summary += f"### Totais:\n{totals_df.to_markdown()}\n\n"
-                            logger.debug(f"📈 Totais calculados para {len(cols)} colunas")
+                            logger.debug(
+                                f"📈 Totais calculados para {len(cols)} colunas")
                         except Exception as total_err:
-                            logger.warning(f"⚠️ Erro ao calcular totais: {total_err}")
+                            logger.warning(
+                                f"⚠️ Erro ao calcular totais: {total_err}")
                             summary += f"### Totais:\n{df[cols].sum().to_string()}\n\n"
 
                 # Primeiras linhas
@@ -233,7 +236,8 @@ def execute_sql(sql_query: str):
                     summary += f"### Primeiras 5 linhas:\n{df.head(5).to_string(index=False)}"
 
                 summary += "\n\n**Dica:** Use 'Export Query to CSV' para exportar todos os dados."
-                logger.info(f"📊 Retornando resumo com {len(cols) if cols else 0} colunas numéricas")
+                logger.info(
+                    f"📊 Retornando resumo com {len(cols) if cols else 0} colunas numéricas")
                 return summary
 
         except ImportError as ie:

@@ -1,0 +1,36 @@
+{
+  "timestamp_inicio": "2026-01-25T16:32:48.979393",
+  "etapas": {
+    "extracao": {
+      "status": "SUCESSO",
+      "dados": {
+        "quantidade_registros": 13194,
+        "quantidade_colunas": 34,
+        "relatorio": {
+          "timestamp": "2026-01-25T16:32:48.986001",
+          "dias_processados": 0,
+          "registros_extraidos": 0,
+          "registros_duplicados": 0,
+          "erros_api": [],
+          "tempo_total": 0
+        }
+      },
+      "erros": []
+    },
+    "transformacao": {
+      "status": "ERRO",
+      "dados": null,
+      "erros": [
+        "\"None of [Index(['id_favorecido'], dtype='object')] are in the [columns]\""
+      ]
+    },
+    "carga": {
+      "status": "PENDENTE",
+      "dados": null,
+      "erros": []
+    }
+  },
+  "status_geral": "FALHA",
+  "tempo_total": 0,
+  "timestamp_fim": "2026-01-25T16:32:49.313613"
+}

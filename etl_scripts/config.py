@@ -1,5 +1,6 @@
 import os
 from dotenv import load_dotenv
+from datetime import datetime, timedelta
 
 load_dotenv()
 
@@ -7,8 +8,10 @@ load_dotenv()
 class Config:
     API_KEY = os.getenv("API_KEY")
     # Ajuste as datas para um intervalo válido
-    DATA_INICIO = "01/01/2024"
-    DATA_FIM = "31/12/2024"
+    # DATA_INICIO = "01/01/2024"
+    # DATA_FIM = "30/06/2025"
+    DATA_FIM = datetime.now().strftime("%d/%m/%Y")
+    DATA_INICIO = (datetime.now() - timedelta(days=180)).strftime("%d/%m/%Y")
 
     # Parâmetros API
     UNIDADE_GESTORA = None

@@ -1,0 +1,53 @@
+{
+  "timestamp_inicio": "2026-01-25T16:39:40.710335",
+  "etapas": {
+    "extracao": {
+      "status": "SUCESSO",
+      "dados": {
+        "quantidade_registros": 13194,
+        "quantidade_colunas": 34,
+        "relatorio": {
+          "timestamp": "2026-01-25T16:39:40.716653",
+          "dias_processados": 0,
+          "registros_extraidos": 0,
+          "registros_duplicados": 0,
+          "erros_api": [],
+          "tempo_total": 0
+        }
+      },
+      "erros": []
+    },
+    "transformacao": {
+      "status": "SUCESSO",
+      "dados": {
+        "dimensoes": {
+          "favorecido": 1314,
+          "programa": 27,
+          "natureza": 36,
+          "ug": 10
+        },
+        "fato": 13194,
+        "relatorio": {
+          "timestamp": "2026-01-25T16:39:40.934223",
+          "dados_entrada": 13194,
+          "dados_saida": 13194,
+          "tempo_processamento": 0.09491539001464844,
+          "registros_rejeitados": [],
+          "duplicatas_detectadas": {},
+          "avisos": []
+        }
+      },
+      "erros": []
+    },
+    "carga": {
+      "status": "ERRO",
+      "dados": null,
+      "erros": [
+        "'cod_funcao'"
+      ]
+    }
+  },
+  "status_geral": "FALHA",
+  "tempo_total": 0,
+  "timestamp_fim": "2026-01-25T16:39:51.109846"
+}

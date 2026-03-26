@@ -160,7 +160,7 @@ def log_to_audit(
 
         # Query INSERT com named parameters (SQLAlchemy style)
         from sqlalchemy import text
-        
+
         query = """
         INSERT INTO chat_audit_log (
             timestamp,

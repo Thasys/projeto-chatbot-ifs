@@ -336,7 +336,7 @@ class IFSCrewV2:
 
         # SIGALRM só existe em Unix/Linux, não no Windows
         use_alarm = platform.system() != 'Windows'
-        
+
         try:
             # Inicia alarm (apenas Unix/Linux)
             if use_alarm:
@@ -417,7 +417,8 @@ class IFSCrewV2:
             }
 
         except Exception as e:
-            logger.error(f"❌ Erro na execução do crew: {type(e).__name__}: {str(e)[:500]}")
+            logger.error(
+                f"❌ Erro na execução do crew: {type(e).__name__}: {str(e)[:500]}")
             resposta_erro = f"❌ Erro no processamento. Detalhes: {str(e)[:100]}"
             return {
                 'resposta': resposta_erro,
@@ -427,7 +428,7 @@ class IFSCrewV2:
                 'periodo_fim': None,
                 'warnings': [f'Erro: {type(e).__name__}']
             }
-        
+
         finally:
             # ✅ CRÍTICO: SEMPRE cancelar o alarm, mesmo em exceção
             if use_alarm:
@@ -435,4 +436,5 @@ class IFSCrewV2:
                     signal.alarm(0)  # Cancela o alarm
                     logger.debug("✅ Signal alarm cancelado")
                 except Exception as cancel_error:
-                    logger.warning(f"⚠️ Erro ao cancelar alarm: {cancel_error}")
+                    logger.warning(
+                        f"⚠️ Erro ao cancelar alarm: {cancel_error}")
