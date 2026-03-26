@@ -282,19 +282,26 @@ class IFSCrewV2:
     def execute_with_timeout(self, crew, user_question: str, timeout: int = 60):
         """
         Executa crew com timeout.
+        Nota: Timeout via signal.SIGALRM não funciona no Windows.
+        No Windows, apenas executa normalmente sem timeout.
         """
+        import platform
         import signal
 
         def timeout_handler(signum, frame):
             raise TimeoutError(f"Query timeout após {timeout}s")
 
-        # Set timeout (apenas em Unix/Linux)
-        signal.signal(signal.SIGALRM, timeout_handler)
-        signal.alarm(timeout)
-
         try:
+            # SIGALRM só existe em Unix/Linux, não no Windows
+            if platform.system() != 'Windows':
+                signal.signal(signal.SIGALRM, timeout_handler)
+                signal.alarm(timeout)
+
             resultado = crew.kickoff()
-            signal.alarm(0)  # Cancelar alarm
+            
+            if platform.system() != 'Windows':
+                signal.alarm(0)  # Cancelar alarm
+            
             return resultado
 
         except TimeoutError as e:
@@ -322,16 +329,21 @@ class IFSCrewV2:
 
         try:
             import signal
+            import platform
 
             def timeout_handler(signum, frame):
                 raise TimeoutError(f"Query timeout após {timeout}s")
 
-            signal.signal(signal.SIGALRM, timeout_handler)
-            signal.alarm(timeout)
+            # SIGALRM só existe em Unix/Linux, não no Windows
+            if platform.system() != 'Windows':
+                signal.signal(signal.SIGALRM, timeout_handler)
+                signal.alarm(timeout)
 
             # Executar crew
             resultado = crew.kickoff()
-            signal.alarm(0)
+            
+            if platform.system() != 'Windows':
+                signal.alarm(0)
 
             # ========== P0.3: EXTRAIR METADADOS ==========
             # Analisar resposta para determinar confiança

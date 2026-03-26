@@ -158,7 +158,9 @@ def log_to_audit(
         if not user_ip:
             user_ip = "UNKNOWN"
 
-        # Query INSERT
+        # Query INSERT com named parameters (SQLAlchemy style)
+        from sqlalchemy import text
+        
         query = """
         INSERT INTO chat_audit_log (
             timestamp,
@@ -179,31 +181,39 @@ def log_to_audit(
             parametros_request
         ) VALUES (
             NOW(),
-            %s, %s, %s, %s, %s, %s,
-            %s, %s, %s, %s, %s, %s,
-            %s, %s, %s
+            :user_ip, :pergunta, :intent, :entidades, :sql,
+            :resposta, :confidence, :tempo_ms, :status, :erro,
+            :periodo_inicio, :periodo_fim, :data_coleta, :filtros, :parametros
         )
         """
 
-        params = (
-            user_ip,
-            pergunta_sanitizada,
-            json_intent_str,
-            entidades_str,
-            sql_executado[:5000] if sql_executado else "",
-            resposta_sanitizada,
-            max(0, min(100, confidence)),  # Garantir 0-100
-            tempo_ms,
-            status,
-            mensagem_erro,
-            periodo_dados_inicio,
-            periodo_dados_fim,
-            data_coleta_mais_recente,
-            filtros_str,
-            parametros_request
-        )
+        params = {
+            'user_ip': user_ip,
+            'pergunta': pergunta_sanitizada,
+            'intent': json_intent_str,
+            'entidades': entidades_str,
+            'sql': sql_executado[:5000] if sql_executado else "",
+            'resposta': resposta_sanitizada,
+            'confidence': max(0, min(100, confidence)),
+            'tempo_ms': tempo_ms,
+            'status': status,
+            'erro': mensagem_erro,
+            'periodo_inicio': periodo_dados_inicio,
+            'periodo_fim': periodo_dados_fim,
+            'data_coleta': data_coleta_mais_recente,
+            'filtros': filtros_str,
+            'parametros': parametros_request
+        }
 
-        db.execute_query(query, params)
+        # Usar engine direto pois execute_query é para SELECT
+        engine = db.get_engine()
+        try:
+            with engine.connect() as connection:
+                connection.execute(text(query), params)
+                connection.commit()
+        except Exception as insert_error:
+            logger.error(f"❌ Erro no INSERT audit: {insert_error}")
+            raise
 
         logger.debug(
             f"✅ Audit log salvo: {pergunta_sanitizada[:50]}... (status={status})")
@@ -239,11 +249,11 @@ def get_audit_logs(
     params = {}
 
     if status_filter:
-        query += " AND status = %s"
+        query += " AND status = :status"
         params['status'] = status_filter
 
     if user_id_filter:
-        query += " AND user_id = %s"
+        query += " AND user_id = :user_id"
         params['user_id'] = user_id_filter
 
     query += f" ORDER BY timestamp DESC LIMIT {limit}"
