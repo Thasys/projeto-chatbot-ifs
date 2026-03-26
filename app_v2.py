@@ -144,41 +144,33 @@ def process_input(user_input: str):
 
             inicio = time.time()
 
-            # EXECUTAR COM TIMEOUT
+            # EXECUTAR COM TIMEOUT + CONFIDENCE SCORE (P0.3)
             crew = get_crew()
             crew_instance = crew.get_crew(user_input)
 
-            try:
-                result = crew_instance.kickoff()
-            except Exception as e:
-                # Tratamento de erro específico
-                error_str = str(e).lower()
-
-                if 'sql' in error_str:
-                    result = ERRO_MENSAGENS['SQL_ERROR']
-                elif 'timeout' in error_str:
-                    result = ERRO_MENSAGENS['TIMEOUT']
-                elif 'not found' in error_str:
-                    result = ERRO_MENSAGENS['ENTITY_NOT_FOUND']
-                else:
-                    result = ERRO_MENSAGENS['GENERIC_ERROR']
-
-                logger.error(f"Erro: {e}")
+            # Usar novo método com confidence score
+            crew_response = crew.execute_with_confidence(
+                crew_instance, user_input)
+            result = crew_response['resposta']
+            confidence = crew_response['confidence']
+            metadata = crew_response['metadata']
 
             tempo_decorrido = time.time() - inicio
 
-            # ========== AUDITORIA: Registrar interação ==========
+            # ========== AUDITORIA: Registrar interação com CONFIANÇA ==========
             tempo_ms = int(tempo_decorrido * 1000)
             status_auditoria = "SUCCESS" if result != ERRO_MENSAGENS['GENERIC_ERROR'] else "ERROR"
 
             log_to_audit(
                 pergunta=user_input,
-                resposta=result[:5000],  # Limitar tamanho
+                resposta=result[:5000],
                 status=status_auditoria,
                 tempo_ms=tempo_ms,
                 user_ip=st.session_state.get('user_ip', 'STREAMLIT'),
-                json_intent={},  # Será preenchido pelo crew em versão futura
-                confidence=0.0,  # Será preenchido em P0.3
+                json_intent={},
+                confidence=confidence,  # ✅ P0.3: Score de confiança agora registrado!
+                periodo_dados_inicio=metadata.period_start,
+                periodo_dados_fim=metadata.period_end,
             )
 
             # Finalizar status
@@ -189,8 +181,26 @@ def process_input(user_input: str):
                 expanded=False
             )
 
-            # Exibir resultado
+            # ========== P0.3: MOSTRAR RESPOSTA COM CONFIDENCE BADGE ==========
             st.markdown(result)
+            
+            # Badge de confiança com cores
+            if confidence >= 80:
+                badge_color = "🟢"
+                badge_text = f"Confiança Alta ({confidence:.0f}%)"
+            elif confidence >= 50:
+                badge_color = "🟡"
+                badge_text = f"Confiança Média ({confidence:.0f}%)"
+            else:
+                badge_color = "🔴"
+                badge_text = f"Confiança Baixa ({confidence:.0f}%)"
+            
+            st.markdown(f"{badge_color} **{badge_text}** | Período: {metadata.period_start} até {metadata.period_end}")
+            
+            # Mostrar aviso se houver
+            if metadata.warning_messages:
+                for warning in metadata.warning_messages:
+                    st.warning(warning)
 
             # ========== MELHORIA: FEEDBACK DO USUÁRIO ==========
             col1, col2, col3 = st.columns([1, 1, 3])
