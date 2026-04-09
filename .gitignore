@@ -1,23 +1,79 @@
 # .gitignore
 
-# Arquivos de Ambiente (SEGURANÇA CRÍTICA)
+# ===== SEGURANÇA CRÍTICA =====
 .env
+.env.local
+.env.*.local
+secrets/
+
+# ===== Python & Virtual Environments =====
 .venv
 venv/
 env/
+ENV/
+*.egg-info/
+dist/
+build/
+.tox/
+.pytest_cache/
+.coverage
+htmlcov/
 
-# Python Cache e Logs
+# ===== Python Cache e Bytecode =====
 __pycache__/
-*.pyc
-*.log
+*.py[cod]
+*$py.class
+*.so
 
-# Arquivos de Sistema
-.DS_Store
-
-# Saídas geradas pelo sistema
-reports/*.csv
-dados_brutos/
-
-# IDEs
+# ===== IDE & Editors =====
 .vscode/
 .idea/
+*.swp
+*.swo
+*~
+.DS_Store
+*.sublime-project
+*.sublime-workspace
+
+# ===== Logs e Debugging =====
+*.log
+*.log.*
+debug_*.py
+test_*.txt
+test_*.log
+etl_logs/
+
+# ===== Dependências & NPM =====
+node_modules/
+npm-debug.log
+yarn-error.log
+
+# ===== Arquivos Temporários =====
+*.tmp
+*.temp
+*.bak
+*.backup
+.cache/
+tmp/
+temp/
+
+# ===== Saídas Geradas =====
+reports/*.csv
+dados_brutos/
+*.csv
+etl_relatorio_*.json
+
+# ===== Docker =====
+docker-compose.override.yml
+.docker
+
+# ===== CI/CD =====
+.github/workflows/*.tmp
+.gitlab-ci.*.yml
+
+# ===== OS Específicos =====
+Thumbs.db
+.DS_Store
+.AppleDouble
+.LSOverride
+ehthumbs.db

@@ -1,0 +1,115 @@
+name: Tests
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ['3.11', '3.13']
+
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ matrix.python-version }}
+        cache: 'pip'
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+    
+    - name: Lint with flake8
+      run: |
+        pip install flake8
+        flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
+      continue-on-error: true
+    
+    - name: Syntax check
+      run: |
+        python -m py_compile *.py
+        python -m py_compile etl_scripts/*.py
+    
+    - name: Check imports
+      run: |
+        python -c "import crew_definition_v2; import tools; import db_connection; import app_v2"
+    
+    - name: Type hints check
+      run: |
+        pip install mypy
+        mypy *.py --ignore-missing-imports
+      continue-on-error: true
+
+  database-test:
+    runs-on: ubuntu-latest
+    
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: test_password
+          MYSQL_DATABASE: ifs_db
+        options: >-
+          --health-cmd="mysqladmin ping"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=3
+        ports:
+          - 3306:3306
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.13'
+        cache: 'pip'
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+    
+    - name: Wait for MySQL
+      run: |
+        for i in {1..30}; do
+          if python -c "import mysql.connector; mysql.connector.connect(host='localhost', user='root', password='test_password', database='ifs_db')" 2>/dev/null; then
+            exit 0
+          fi
+          sleep 1
+        done
+        exit 1
+    
+    - name: Run database connection test
+      run: |
+        python etl_scripts/test_db_connection.py
+      continue-on-error: true
+
+  lint-commit-messages:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+    
+    - name: Validate commit messages
+      run: |
+        for commit in $(git rev-list origin/main..HEAD); do
+          message=$(git log -1 --pretty=%B $commit)
+          if ! echo "$message" | grep -qE '^(feat|fix|docs|refactor|test|chore|style): '; then
+            echo "❌ Invalid commit message: $message"
+            exit 1
+          fi
+        done
+      continue-on-error: true
