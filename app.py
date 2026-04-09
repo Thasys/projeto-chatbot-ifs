@@ -134,7 +134,7 @@ def process_input(user_input):
         try:
             # ✅ REMOVIDO: optimizer = PerformanceLayer() (fake theater)
             # ✅ REMOVIDO: cached_response = optimize_execution_path() (predefined answers)
-            
+
             # ✅ AGORA: Usar AGENTES REAIS
             start_time = time.time()
 
@@ -247,7 +247,7 @@ if "messages" not in st.session_state:
 if len(st.session_state.messages) == 0:
     st.markdown("<br>", unsafe_allow_html=True)
     st.info("👋 Olá! Sou seu Auditor Virtual. Analiso dados financeiros do IFS com base na execução de 2024. Experimente uma consulta abaixo:")
-    
+
     st.markdown("##### 🚀 Consultas Sugeridas (Demonstração):")
 
     col1, col2 = st.columns(2)

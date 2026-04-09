@@ -11,7 +11,8 @@ from datetime import datetime
 
 # Forçar encoding UTF-8
 os.environ['PYTHONIOENCODING'] = 'utf-8'
-sys.stdout.reconfigure(encoding='utf-8') if hasattr(sys.stdout, 'reconfigure') else None
+sys.stdout.reconfigure(
+    encoding='utf-8') if hasattr(sys.stdout, 'reconfigure') else None
 
 # Desabilitar logging do CrewAI verboso
 for logger_name in ['crew', 'crewai', 'langchain']:
@@ -62,14 +63,15 @@ try:
             resultado = crew_inst.kickoff()
             resultado_str = str(resultado)
             char_count = len(resultado_str)
-            
+
             # Validacoes basicas
             tem_dados = len(resultado_str) > 100
             tem_reais = "R$" in resultado_str
-            
+
             status = "[PASS]" if tem_dados else "[INFO]"
-            print(f"        Status: {status} ({char_count} chars, reais: {tem_reais})")
-            
+            print(
+                f"        Status: {status} ({char_count} chars, reais: {tem_reais})")
+
             sucessos_app1 += 1
         except Exception as e:
             print(f"        Status: [ERRO] {type(e).__name__}: {str(e)[:60]}")
@@ -100,19 +102,21 @@ try:
         print(f"[PERGUNTA {i}] {pergunta[:45]}...")
         try:
             crew_inst = crew_v2.get_crew(pergunta)
-            crew_response = crew_v2.execute_with_confidence(crew_inst, pergunta)
-            
+            crew_response = crew_v2.execute_with_confidence(
+                crew_inst, pergunta)
+
             resultado_str = crew_response['resposta']
             confidence = crew_response['confidence']
             char_count = len(resultado_str)
-            
+
             # Validacoes basicas
             tem_dados = len(resultado_str) > 100
             tem_reais = "R$" in resultado_str
-            
+
             status = "[PASS]" if tem_dados else "[INFO]"
-            print(f"        Status: {status} ({char_count} chars, conf: {confidence:.0f}%, reais: {tem_reais})")
-            
+            print(
+                f"        Status: {status} ({char_count} chars, conf: {confidence:.0f}%, reais: {tem_reais})")
+
             sucessos_app2 += 1
         except Exception as e:
             print(f"        Status: [ERRO] {type(e).__name__}: {str(e)[:60]}")

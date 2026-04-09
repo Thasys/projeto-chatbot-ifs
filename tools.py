@@ -135,7 +135,20 @@ def search_entity_fuzzy(search_term: str):
 
         if not results:
             print("   ❌ Nenhum resultado válido.")
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.info(
+                f"[FUZZY SEARCH] Nenhuma entidade encontrada para: '{search_term}'")
             return "No entities found."
+
+        # ===== FIX 4.3: LOGGING DOS MATCHES ENCONTRADOS =====
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.info(
+            f"[FUZZY SEARCH] Total de matches: {len(results)} para '{search_term}'")
+        for i, result in enumerate(results[:3]):
+            logger.info(
+                f"[FUZZY SEARCH] Match #{i+1}: {result['found_name']} ({result['similarity_score']}% - {result['type']})")
 
         return str(results[:3])
 
@@ -162,7 +175,6 @@ def search_sql_memory(user_question: str):
 
 
 @tool("Execute SQL Query")
-@tool("Execute SQL Query")
 def execute_sql(sql_query: str):
     """
     Executes a SELECT SQL query on the 'v_financas_geral' view.
@@ -179,7 +191,10 @@ def execute_sql(sql_query: str):
         # Limpar input
         sql_query = sql_query.strip().replace("```sql", "").replace("```", "")
 
-        logger.debug(f"📌 SQL Query: {sql_query[:100]}...")
+        # ===== FIX 4.2: LOGGING DETALHADO DA SQL EXECUTADA =====
+        logger.info(f"[SQL EXEC] ===== QUERY COMPLETA =====")
+        logger.info(f"[SQL EXEC] {sql_query}")
+        logger.info(f"[SQL EXEC] ===== FIM QUERY =====")
 
         # Validar segurança
         if not sql_query.upper().startswith("SELECT"):
@@ -188,9 +203,9 @@ def execute_sql(sql_query: str):
             return error_msg
 
         # Executar query
-        logger.info(f"🔄 Executando query...")
+        logger.info(f"[SQL EXEC] Iniciando execução...")
         df = pd.read_sql(sql_query, db.get_engine())
-        logger.info(f"✅ Query executada com sucesso: {len(df)} linhas")
+        logger.info(f"[SQL EXEC] Sucesso! Retornou {len(df)} linhas")
 
         if df.empty:
             msg = "✅ Query executada com sucesso, mas retornou 0 linhas (nenhum dado encontrado)."

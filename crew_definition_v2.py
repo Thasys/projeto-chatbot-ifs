@@ -188,9 +188,12 @@ class IFSCrewV2:
                 "4. Return JSON with these EXACT fields:\n"
                 '   {"intent": "RANKING"|"TOTAL"|"SEARCH", "entities": [...], "date_filter": null, "action": "EXECUTE_SQL"}\n'
                 "5. If entity not found, still return JSON\n"
+                "6. **FIX RULE**: If query is TOTAL query asking for overall IFS data (e.g., 'total de gastos do IFS'),\n"
+                "   treat as TOTAL without entities. DO NOT search for 'IFS' as entity. Only search for specific companies.\n"
                 "\nExamples:\n"
-                '- User: "Top 5 fornecedores" → {"intent": "RANKING", ...}\n'
-                '- User: "Quanto para Energisa" → {"intent": "TOTAL", "entities": [...], ...}\n'
+                '- User: "Top 5 fornecedores" → {"intent": "RANKING", "entities": [], ...}\n'
+                '- User: "Quanto para Energisa" → {"intent": "TOTAL", "entities": [Energisa found], ...}\n'
+                '- User: "Total de gastos do IFS em 2024" → {"intent": "TOTAL", "entities": [], ...} NO SEARCH for IFS!\n'
             ),
             tools=[search_entity_fuzzy],
             verbose=True,
@@ -198,18 +201,48 @@ class IFSCrewV2:
             llm=self.llm_engine
         )
 
-        # ========== AGENTE 2: SQL Architect (MELHORADO) ==========
+        # ========== AGENTE 2: SQL Architect (MELHORADO COM FIX 1 & FIX TOTAL) ==========
         sql_architect = Agent(
             role='🏗️ SQL Expert',
-            goal='Generate and execute SQL queries based on JSON input.',
+            goal='Generate and execute SQL queries with proper aggregation and filtering.',
             backstory=(
                 "You are a SQL execution engine. You receive JSON and build queries.\n"
-                "SCHEMA: v_financas_geral (data, valor, favorecido_nome, id_favorecido, id_ug, tipo_despesa, id_programa, id_natureza)\n"
-                "PATTERNS:\n"
-                "- RANKING: SELECT col, SUM(valor) ... GROUP BY ... ORDER BY DESC LIMIT 5\n"
-                "- TOTAL: SELECT SUM(valor)\n"
-                "- Check 'Search SQL Memory' for similar queries\n"
-                "- ALWAYS execute with 'Execute SQL Query' tool\n"
+                f"SCHEMA: v_financas_geral (data, valor, favorecido_nome, id_favorecido, id_ug, tipo_despesa, id_programa, id_natureza)\n"
+                f"CURRENT YEAR: {current_year}\n"
+                "\nCRITICAL RULES FOR AGGREGATION:\n"
+                "**FIX RULE**: If intent=TOTAL and entity is 'IFS', IGNORE it and generate a total SUM without WHERE clause.\n"
+                "1. RANKING queries: MUST use GROUP BY + ORDER BY DESC + LIMIT 5\n"
+                "   Example: SELECT favorecido_nome, SUM(valor) as total FROM v_financas_geral WHERE YEAR(data)={current_year} GROUP BY favorecido_nome ORDER BY total DESC LIMIT 5\n"
+                "\n2. TOTAL queries: MUST use SUM(valor) aggregation\n"
+                "   Example: SELECT SUM(valor) as total FROM v_financas_geral WHERE YEAR(data)={current_year}\n"
+                "\n3. SEARCH queries: Use WHERE with LIKE for fuzzy matching\n"
+                "   Example: SELECT SUM(valor) FROM v_financas_geral WHERE favorecido_nome LIKE '%ENTITY%' AND YEAR(data)={current_year}\n"
+                "\n4. PERIOD FILTERING:\n"
+                f"   - Always include YEAR(data) = {current_year} or full date range\n"
+                f"   - For year: 2024-01-01 to 2024-12-31 (FULL YEAR, not partial)\n"
+                "   - For month: MONTH(data) = N\n"
+                "\n5. FUZZY MATCHING:\n"
+                "   - Use LIKE '%TERM%' with uppercase conversion\n"
+                "   - Example: WHERE UPPER(favorecido_nome) LIKE '%ENERGISA%'\n"
+                "\n6. ENTITY FILTERING:\n"
+                "   - For specific company: WHERE favorecido_nome LIKE '%NAME%'\n"
+                "   - For campus/unit: WHERE unidade_pagadora LIKE '%NAME%' (NOT 'ug')\n"
+                "   - For expense type: WHERE tipo_despesa LIKE '%NAME%'\n"
+                "\nCOLUMN REFERENCE (v_financas_geral):\n"
+                "- data: transaction date\n"
+                "- valor: amount (double)\n"
+                "- favorecido_nome: provider/company name\n"
+                "- unidade_pagadora: unit name (campus, reitoria)\n"
+                "- tipo_despesa: expense type (Vencimentos, Diárias - Civil, etc.)\n"
+                "- historico_detalhado: transaction history/details\n"
+                "- id_ug, id_favorecido, id_natureza, id_programa: foreign keys\n"
+                "\nREFERENCE QUERIES:\n"
+                "- Top 5: SELECT favorecido_nome, SUM(valor) ... GROUP BY ... ORDER BY DESC LIMIT 5\n"
+                "- Total: SELECT SUM(valor) FROM ...\n"
+                "- Diarias: SELECT tipo_despesa, SUM(valor) FROM ... WHERE tipo_despesa='Diárias - Civil' GROUP BY tipo_despesa\n"
+                "- Campus: SELECT unidade_pagadora, SUM(valor) FROM ... WHERE unidade_pagadora LIKE '%PROPRIA%' GROUP BY unidade_pagadora\n"
+                "\nCheck 'Search SQL Memory' for similar previously working queries.\n"
+                "ALWAYS execute processed SQL with 'Execute SQL Query' tool.\n"
             ),
             tools=[search_sql_memory, execute_sql, export_csv],
             verbose=True,
@@ -349,6 +382,18 @@ class IFSCrewV2:
             resultado = crew.kickoff()
             logger.info(f"✅ Crew completado com sucesso")
 
+            # ===== FIX 4.1: LOGGING COMPLETO DO RESULTADO =====
+            logger.info(
+                f"[DEBUG CREW RESULT] Raw result type: {type(resultado)}")
+            resultado_str = str(resultado)
+            logger.info(
+                f"[DEBUG CREW RESULT] Result length: {len(resultado_str)} chars")
+            logger.info(
+                f"[DEBUG CREW RESULT] First 200 chars: {resultado_str[:200]}")
+            if len(resultado_str) > 1000:
+                logger.info(
+                    f"[DEBUG CREW RESULT] Last 200 chars: {resultado_str[-200:]}")
+
             # ========== P0.3: EXTRAIR METADADOS ==========
             # Analisar resposta para determinar confiança
             resposta_lower = str(resultado).lower()
@@ -376,11 +421,20 @@ class IFSCrewV2:
             )
 
             # Criar metadados
+            # ===== FIX 3: CORRIGIR PERÍODO PARA ANO COMPLETO =====
             now = datetime.now()
+            current_year = now.year
+            # Usar ano completo (2024-01-01 até 2024-12-31), não período parcial
+            periodo_inicio = f"{current_year}-01-01"
+            periodo_fim = f"{current_year}-12-31"
+
+            logger.info(
+                f"[DEBUG PERIODO] Período definido: {periodo_inicio} a {periodo_fim}")
+
             metadata = ResponseMetadata(
                 confidence=confidence,
-                period_start=now.replace(month=1, day=1).strftime('%Y-%m-%d'),
-                period_end=now.strftime('%Y-%m-%d'),
+                period_start=periodo_inicio,
+                period_end=periodo_fim,
                 data_freshness_date=now.strftime('%Y-%m-%d'),
                 warning_messages=[]
             )
