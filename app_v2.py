@@ -161,9 +161,12 @@ def process_input(user_input: str):
             tempo_ms = int(tempo_decorrido * 1000)
             status_auditoria = "SUCCESS" if result != ERRO_MENSAGENS['GENERIC_ERROR'] else "ERROR"
 
+            # ✅ FIX: Garantir que result é string antes de fazer slice
+            resposta_auditoria = str(result)[:5000] if result else ""
+
             log_to_audit(
                 pergunta=user_input,
-                resposta=result[:5000],
+                resposta=resposta_auditoria,
                 status=status_auditoria,
                 tempo_ms=tempo_ms,
                 user_ip=st.session_state.get('user_ip', 'STREAMLIT'),

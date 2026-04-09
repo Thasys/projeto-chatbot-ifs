@@ -395,8 +395,11 @@ class IFSCrewV2:
 
             logger.info(f"✅ Resposta com confiança: {confidence}%")
 
+            # ✅ FIX: Converter CrewOutput para string (não pode fazer slice em CrewOutput)
+            resposta_texto = str(resultado) if resultado else "Sem resposta"
+
             return {
-                'resposta': resultado,
+                'resposta': resposta_texto,
                 'confidence': confidence,
                 'metadata': metadata,
                 'periodo_inicio': metadata.period_start,
