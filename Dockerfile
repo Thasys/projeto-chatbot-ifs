@@ -1,7 +1,7 @@
 # Multi-stage Dockerfile para IFS Transparência Chatbot v2.0
-# Usa Python 3.13-slim para otimização e performance
+# Usa Python 3.12-slim para compatibilidade com PythonAnywhere
 
-FROM python:3.13-slim AS builder
+FROM python:3.12-slim AS builder
 
 WORKDIR /app
 
@@ -16,7 +16,7 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Stage 2: Production image
-FROM python:3.13-slim
+FROM python:3.12-slim
 
 WORKDIR /app
 
