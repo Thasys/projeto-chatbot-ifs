@@ -48,7 +48,5 @@ RUN chmod -R 755 /app
 EXPOSE 8501
 
 # Usar /bin/sh para expandir variável $PORT corretamente
-# ENTRYPOINT executa /bin/sh -c
-# CMD passa o comando a ser executado
-ENTRYPOINT ["/bin/sh", "-c"]
-CMD ["python -m streamlit run app_v2.py --server.address=0.0.0.0 --server.port=${PORT:-8501} --server.headless=true"]
+# Este é o único jeito que funciona: passar o comando como STRING única
+CMD ["/bin/sh", "-c", "python -m streamlit run app_v2.py --server.address=0.0.0.0 --server.port=${PORT:-8501} --server.headless=true"]
