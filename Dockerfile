@@ -41,14 +41,15 @@ COPY --from=builder /usr/local/lib/python3.12/site-packages /usr/local/lib/pytho
 # Copiar código da app
 COPY . .
 
+# Copiar entrypoint script
+COPY entrypoint.sh /app/entrypoint.sh
+RUN chmod +x /app/entrypoint.sh
+
 # Permissões de acesso
 RUN chmod -R 755 /app
 
 # Exposer porta (dinâmica para Railway)
 EXPOSE 8501
 
-# Default command: executar Streamlit com porta dinâmica
-# Railway injeta PORT via variável de environment
-# Usar 'sh -c' para compatibilidade com substituição de variáveis
-# SEM barra invertida para que shell expanda $PORT corretamente
-CMD sh -c "python -m streamlit run app_v2.py --server.address=0.0.0.0 --server.port=${PORT:-8501} --server.headless=true"
+# Usar entrypoint script para lidar com PORT dinâmica
+ENTRYPOINT ["/app/entrypoint.sh"]
