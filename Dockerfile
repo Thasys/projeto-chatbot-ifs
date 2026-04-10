@@ -35,10 +35,6 @@ ENV PYTHONUNBUFFERED=1 \
 # Criar diretórios necessários
 RUN mkdir -p /app/reports /app/dados_brutos /app/etl_scripts /app/.streamlit
 
-# Copiar entrypoint script PRIMEIRO (antes de COPY .)
-COPY entrypoint.sh /app/entrypoint.sh
-RUN chmod +x /app/entrypoint.sh
-
 # Copiar dependências do builder (CORRIGIDO: python3.12, não python3.13)
 COPY --from=builder /usr/local/lib/python3.12/site-packages /usr/local/lib/python3.12/site-packages
 
@@ -51,5 +47,8 @@ RUN chmod -R 755 /app
 # Exposer porta (dinâmica para Railway)
 EXPOSE 8501
 
-# Usar entrypoint script para lidar com PORT dinâmica
-ENTRYPOINT ["/app/entrypoint.sh"]
+# Usar /bin/sh para expandir variável $PORT corretamente
+# ENTRYPOINT executa /bin/sh -c
+# CMD passa o comando a ser executado
+ENTRYPOINT ["/bin/sh", "-c"]
+CMD ["python -m streamlit run app_v2.py --server.address=0.0.0.0 --server.port=${PORT:-8501} --server.headless=true"]
