@@ -1,5 +1,5 @@
 # Multi-stage Dockerfile para IFS Transparência Chatbot v2.0
-# Usa Python 3.12-slim para compatibilidade com PythonAnywhere
+# Otimizado para Railway + Python 3.12
 
 FROM python:3.12-slim AS builder
 
@@ -29,15 +29,14 @@ LABEL description="IFS Chatbot v2.0 - AI-powered financial transparency system"
 ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
     STREAMLIT_SERVER_HEADLESS=true \
-    STREAMLIT_SERVER_PORT=8501 \
     STREAMLIT_LOGGER_LEVEL=warning \
     PYTHONOPTIMIZE=2
 
 # Criar diretórios necessários
 RUN mkdir -p /app/reports /app/dados_brutos /app/etl_scripts /app/.streamlit
 
-# Copiar dependências do builder
-COPY --from=builder /usr/local/lib/python3.13/site-packages /usr/local/lib/python3.13/site-packages
+# Copiar dependências do builder (CORRIGIDO: python3.12, não python3.13)
+COPY --from=builder /usr/local/lib/python3.12/site-packages /usr/local/lib/python3.12/site-packages
 
 # Copiar código da app
 COPY . .
@@ -45,12 +44,9 @@ COPY . .
 # Permissões de acesso
 RUN chmod -R 755 /app
 
-# Health check
-HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-    CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:8501').read(); exit(0)" || exit 1
-
-# Exposer porta
+# Exposer porta (dinâmica para Railway)
 EXPOSE 8501
 
-# Default command: executar Streamlit
-CMD ["streamlit", "run", "app_v2.py", "--server.address=0.0.0.0", "--server.port=8501"]
+# Default command: executar Streamlit com porta dinâmica
+# Railway injeta PORT via variável de environment
+CMD ["streamlit", "run", "app_v2.py", "--server.address=0.0.0.0", "--server.port=${PORT:-8501}", "--server.headless=true"]
