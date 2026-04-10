@@ -49,5 +49,5 @@ EXPOSE 8501
 
 # Default command: executar Streamlit com porta dinâmica
 # Railway injeta PORT via variável de environment
-# Usar 'python -m streamlit' é mais robusto que 'streamlit' em containers
-CMD python -m streamlit run app_v2.py --server.address=0.0.0.0 --server.port=${PORT:-8501} --server.headless=true
+# Usar 'sh -c' para compatibilidade com substituição de variáveis
+CMD sh -c "python -m streamlit run app_v2.py --server.address=0.0.0.0 --server.port=\${PORT:-8501} --server.headless=true"
