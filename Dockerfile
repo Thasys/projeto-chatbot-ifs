@@ -35,15 +35,15 @@ ENV PYTHONUNBUFFERED=1 \
 # Criar diretórios necessários
 RUN mkdir -p /app/reports /app/dados_brutos /app/etl_scripts /app/.streamlit
 
+# Copiar entrypoint script PRIMEIRO (antes de COPY .)
+COPY entrypoint.sh /app/entrypoint.sh
+RUN chmod +x /app/entrypoint.sh
+
 # Copiar dependências do builder (CORRIGIDO: python3.12, não python3.13)
 COPY --from=builder /usr/local/lib/python3.12/site-packages /usr/local/lib/python3.12/site-packages
 
 # Copiar código da app
 COPY . .
-
-# Copiar entrypoint script
-COPY entrypoint.sh /app/entrypoint.sh
-RUN chmod +x /app/entrypoint.sh
 
 # Permissões de acesso
 RUN chmod -R 755 /app
