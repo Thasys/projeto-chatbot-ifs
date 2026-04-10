@@ -41,12 +41,19 @@ COPY --from=builder /usr/local/lib/python3.12/site-packages /usr/local/lib/pytho
 # Copiar código da app
 COPY . .
 
+# Copiar e preparar entrypoint script com diagnóstico
+COPY entrypoint.sh /app/entrypoint.sh
+RUN chmod +x /app/entrypoint.sh && \
+    # Garantir que usa LF ao invés de CRLF (importante em Windows)
+    sed -i 's/\r$//' /app/entrypoint.sh
+
 # Permissões de acesso
 RUN chmod -R 755 /app
 
 # Exposer porta (dinâmica para Railway)
 EXPOSE 8501
 
-# Usar /bin/sh para expandir variável $PORT corretamente
-# Este é o único jeito que funciona: passar o comando como STRING única
-CMD ["/bin/sh", "-c", "python -m streamlit run app_v2.py --server.address=0.0.0.0 --server.port=${PORT:-8501} --server.headless=true"]
+# Usar entrypoint script com diagnóstico completo
+# ENTRYPOINT passa o controle para o script
+# Script vai loguear PORT e verificar variáveis antes de iniciar Streamlit
+ENTRYPOINT ["/app/entrypoint.sh"]
