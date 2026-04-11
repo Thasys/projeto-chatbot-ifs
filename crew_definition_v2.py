@@ -134,6 +134,20 @@ class IFSCrewV2:
         logger.warning(f"⚠️ Usando ano de fallback: {fallback}")
         return fallback
 
+    def _extract_year_from_question(self, question: str) -> int | None:
+        """
+        Extrai o ano mencionado na pergunta do usuário.
+        Retorna None se nenhum ano válido for encontrado.
+        """
+        import re
+        matches = re.findall(r'\b(20\d{2})\b', question)
+        if matches:
+            year = int(matches[0])
+            current_year = datetime.now().year
+            if 2020 <= year <= current_year:
+                return year
+        return None
+
     # ========== MELHORIA 1: JSON MODE DO OPENAI ==========
     def _extract_json_safe(self, text: str) -> dict:
         """
@@ -425,11 +439,12 @@ class IFSCrewV2:
                 query_type="generic"
             )
 
-            # Criar metadados — usar último ano com dados para exibição do período
+            # Criar metadados — usar ano da pergunta ou último ano com dados
             now = datetime.now()
-            latest_year = self._get_latest_data_year()
-            periodo_inicio = f"{latest_year}-01-01"
-            periodo_fim = f"{latest_year}-12-31"
+            ano_detectado = self._extract_year_from_question(user_question)
+            ref_year = ano_detectado if ano_detectado else self._get_latest_data_year()
+            periodo_inicio = f"{ref_year}-01-01"
+            periodo_fim = f"{ref_year}-12-31"
 
             logger.info(
                 f"[DEBUG PERIODO] Período definido: {periodo_inicio} a {periodo_fim}")
