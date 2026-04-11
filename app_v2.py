@@ -279,7 +279,7 @@ def init_audit_logging():
 def get_db_stats():
     """Busca estatísticas do banco para o banner. Cache de 1 hora."""
     try:
-        db = get_db_connection()
+        db = DBConnection()  # singleton — não chama cache_resource dentro de cache_data
         result = db.execute_query("""
             SELECT
                 COUNT(*)          AS total_transacoes,
@@ -365,47 +365,69 @@ def render_feedback_buttons(message_index: int) -> None:
 
 def try_render_bar_chart(result_text: str) -> bool:
     """Detecta tabela markdown no resultado e renderiza gráfico de barras CSS."""
-    table_match = re.search(r'\|.+\|[\s\S]*?\|[-| :]+\|[\s\S]*?(?=\n\n|\Z)', result_text)
-    if not table_match:
-        return False
-    try:
-        table_str = table_match.group(0)
-        df = pd.read_csv(StringIO(table_str), sep='|', skipinitialspace=True)
-        df = df.dropna(axis=1, how='all')
-        df.columns = [c.strip() for c in df.columns]
-        df = df[~df.iloc[:, 0].astype(str).str.contains('---', na=False)].reset_index(drop=True)
+    lines = result_text.split('\n')
+    table_start = -1
+    sep_line = -1
 
-        if df.empty or len(df) > 10 or len(df.columns) < 2:
+    for idx, line in enumerate(lines):
+        stripped = line.strip()
+        if stripped.startswith('|') and stripped.endswith('|') and table_start == -1:
+            table_start = idx
+        elif table_start != -1 and re.match(r'^\|[\s\-:|]+\|$', stripped):
+            sep_line = idx
+            break
+
+    if table_start == -1 or sep_line == -1:
+        return False
+
+    try:
+        # Parsear cabeçalho
+        headers = [h.strip() for h in lines[table_start].strip().split('|')[1:-1]]
+        if len(headers) < 2:
             return False
 
+        # Parsear linhas de dados
+        rows = []
+        for line in lines[sep_line + 1:]:
+            stripped = line.strip()
+            if not stripped.startswith('|'):
+                break
+            cols = [c.strip() for c in stripped.split('|')[1:-1]]
+            if len(cols) == len(headers):
+                rows.append(dict(zip(headers, cols)))
+
+        if not rows or len(rows) > 10:
+            return False
+
+        # Encontrar coluna numérica
         numeric_col = None
-        num_vals = None
-        for col in df.columns[1:]:
+        num_vals = []
+        for col in headers[1:]:
             try:
-                cleaned = df[col].astype(str).str.replace(r'[R$\s.]', '', regex=True)
-                cleaned = cleaned.str.replace(',', '.', regex=False)
-                vals = pd.to_numeric(cleaned, errors='coerce')
-                if vals.notna().sum() >= len(df) * 0.5:
+                vals = []
+                for row in rows:
+                    cleaned = re.sub(r'[R$\s]', '', row.get(col, ''))
+                    # Formato BR: 1.234.567,89 → remover pontos de milhar, trocar vírgula
+                    cleaned = re.sub(r'\.(?=\d{3})', '', cleaned)
+                    cleaned = cleaned.replace(',', '.')
+                    vals.append(float(cleaned))
+                if vals and max(vals) > 0:
                     numeric_col = col
                     num_vals = vals
                     break
-            except Exception:
+            except (ValueError, TypeError, AttributeError):
                 continue
 
-        if numeric_col is None or num_vals is None:
+        if not numeric_col or not num_vals:
             return False
 
-        max_val = num_vals.max()
-        if max_val == 0:
-            return False
-
-        label_col = df.columns[0]
+        max_val = max(num_vals)
+        label_col = headers[0]
         rows_html = ""
-        for i, row in df.iterrows():
-            val = num_vals.iloc[i] if not pd.isna(num_vals.iloc[i]) else 0
+        for row, val in zip(rows, num_vals):
             pct = (val / max_val) * 100
-            label = str(row[label_col])[:40]
-            val_display = str(row[numeric_col]).strip()
+            label = row.get(label_col, '')[:42]
+            val_display = row.get(numeric_col, '')
             rows_html += f"""
             <div class="ifs-bar-row">
                 <div class="ifs-bar-label-row">
@@ -661,8 +683,15 @@ try:
 except Exception:
     pass
 
+# ========== CAPTURAR QUERY PENDENTE (antes de qualquer coluna) ==========
+# Quick actions salvam a query aqui para ser processada fora do contexto de coluna
+_pending_query = None
+if 'pending_query' in st.session_state:
+    _pending_query = st.session_state['pending_query']
+    del st.session_state['pending_query']
+
 # ========== TELA INICIAL ==========
-if len(st.session_state.messages) == 0:
+if len(st.session_state.messages) == 0 and not _pending_query:
     st.markdown("""
     <div class="ifs-welcome">
         <p class="ifs-welcome-title">👋 Como posso ajudar?</p>
@@ -683,10 +712,12 @@ if len(st.session_state.messages) == 0:
             </div>
             """, unsafe_allow_html=True)
             if st.button("Consultar →", key=f"qa_{i}", use_container_width=True):
-                process_input(action['query'])
+                # Salva e faz rerun — process_input será chamado fora das colunas
+                st.session_state['pending_query'] = action['query']
+                st.rerun()
 
 # ========== HISTÓRICO DO CHAT ==========
-else:
+elif len(st.session_state.messages) > 0:
     for i, message in enumerate(st.session_state.messages):
         avatar = "👤" if message["role"] == "user" else "🏛️"
         with st.chat_message(message["role"], avatar=avatar):
@@ -701,6 +732,8 @@ else:
                     )
                 render_feedback_buttons(i)
 
-# ========== INPUT ==========
-if prompt := st.chat_input("Faça sua pergunta sobre gastos do IFS... (ex: Maiores fornecedores de 2024)"):
+# ========== INPUT — fora de qualquer coluna ==========
+if _pending_query:
+    process_input(_pending_query)
+elif prompt := st.chat_input("Faça sua pergunta sobre gastos do IFS... (ex: Maiores fornecedores de 2024)"):
     process_input(prompt)
