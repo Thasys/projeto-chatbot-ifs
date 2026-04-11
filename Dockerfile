@@ -29,8 +29,7 @@ LABEL description="IFS Chatbot v2.0 - AI-powered financial transparency system"
 ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
     STREAMLIT_SERVER_HEADLESS=true \
-    STREAMLIT_LOGGER_LEVEL=warning \
-    PYTHONOPTIMIZE=2
+    STREAMLIT_LOGGER_LEVEL=warning
 
 # Criar diretórios necessários
 RUN mkdir -p /app/reports /app/data/raw /app/etl /app/logs /app/.streamlit
