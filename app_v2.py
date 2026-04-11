@@ -28,7 +28,8 @@ st.set_page_config(
 )
 
 # ========== DESIGN SYSTEM ==========
-st.markdown("""
+# st.html() renderiza HTML puro sem processar como Markdown — necessário para <style>
+st.html("""
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
@@ -209,7 +210,7 @@ div[data-testid="stMetricLabel"] {
     .ifs-stat-item:last-child { border-bottom: none; }
 }
 </style>
-""", unsafe_allow_html=True)
+""")
 
 # ========== MENSAGENS DE ERRO ==========
 ERRO_MENSAGENS = {
