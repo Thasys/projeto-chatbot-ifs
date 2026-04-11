@@ -1,6 +1,6 @@
 streamlit
-crewai
-langchain_openai
+crewai==0.201.1
+langchain_openai==1.0.3
 sqlalchemy
 mysql-connector-python
 pandas
