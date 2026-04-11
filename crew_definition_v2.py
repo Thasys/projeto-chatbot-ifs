@@ -360,13 +360,17 @@ class IFSCrewV2:
 
         import signal
         import platform
+        import threading
         from datetime import datetime, timedelta
 
         def timeout_handler(signum, frame):
             raise TimeoutError(f"Query timeout após {timeout}s")
 
-        # SIGALRM só existe em Unix/Linux, não no Windows
-        use_alarm = platform.system() != 'Windows'
+        # SIGALRM só existe em Unix/Linux E apenas na thread principal
+        use_alarm = (
+            platform.system() != 'Windows' and
+            threading.current_thread() is threading.main_thread()
+        )
 
         try:
             # Inicia alarm (apenas Unix/Linux)
