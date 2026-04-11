@@ -48,15 +48,15 @@ class EntityCache:
 
             print("   📦 Indexando Programas...")
             df_prog = pd.read_sql(
-                "SELECT id_programa, desc_programa FROM dim_programa", engine)
+                "SELECT id_programa, programa FROM dim_programa", engine)
             self._data['programa'] = df_prog.set_index(
-                'id_programa')['desc_programa'].to_dict()
+                'id_programa')['programa'].to_dict()
 
             print("   📦 Indexando Naturezas...")
             df_nat = pd.read_sql(
-                "SELECT id_natureza, desc_elemento FROM dim_natureza", engine)
+                "SELECT id_natureza, elemento FROM dim_natureza", engine)
             self._data['natureza'] = df_nat.set_index(
-                'id_natureza')['desc_elemento'].to_dict()
+                'id_natureza')['elemento'].to_dict()
 
             print("✅ Cache Pronto!")
         except Exception as e:
@@ -75,7 +75,7 @@ def aggressive_clean(text):
     return clean.lower().strip()
 
 
-@tool("Search Entity Fuzzy")
+@tool
 def search_entity_fuzzy(search_term: str):
     """
     Semantic Search: Finds entities ignoring accents and case.
@@ -165,7 +165,7 @@ def search_entity_fuzzy(search_term: str):
         return f"Error in Fuzzy Search: {str(e)}"
 
 
-@tool("Search SQL Memory")
+@tool
 def search_sql_memory(user_question: str):
     """Retrieves similar SQL templates."""
     try:
@@ -183,7 +183,7 @@ def search_sql_memory(user_question: str):
         return "Memory Error"
 
 
-@tool("Execute SQL Query")
+@tool
 def execute_sql(sql_query: str):
     """
     Executes a SELECT SQL query on the 'v_financas_geral' view.
@@ -278,7 +278,7 @@ def execute_sql(sql_query: str):
         return error_msg
 
 
-@tool("Export Query to CSV")
+@tool
 def export_csv(sql_query: str):
     """Exports data to CSV."""
     db = DBConnection()
