@@ -10,8 +10,11 @@ class Config:
     # Ajuste as datas para um intervalo válido
     # DATA_INICIO = "01/01/2024"
     # DATA_FIM = "30/06/2025"
-    DATA_FIM = datetime.now().strftime("%d/%m/%Y")
-    DATA_INICIO = (datetime.now() - timedelta(days=180)).strftime("%d/%m/%Y")
+    # Usar data fixa de fim para evitar buscar dados futuros (API só tem até ~2025)
+    _hoje = datetime.now()
+    _data_fim_real = _hoje if _hoje.year <= 2025 else datetime(2025, 12, 31)
+    DATA_FIM = _data_fim_real.strftime("%d/%m/%Y")
+    DATA_INICIO = (_data_fim_real - timedelta(days=180)).strftime("%d/%m/%Y")
 
     # Parâmetros API
     UNIDADE_GESTORA = None

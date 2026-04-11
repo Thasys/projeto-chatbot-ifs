@@ -1,17 +1,23 @@
 # setup_views.py
+import sys
+import io
 from sqlalchemy import text
 from db_connection import DBConnection
+
+# Fix Unicode encoding on Windows terminals
+if sys.stdout.encoding and sys.stdout.encoding.lower() != 'utf-8':
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
 
 
 def create_semantic_views():
     db = DBConnection()
     engine = db.get_engine()
 
-    print("🏗️ Iniciando criação da 'View Semântica' no Banco de Dados...")
+    print("[INICIO] Criando view 'v_financas_geral' no banco de dados...")
 
     sql_view = """
     CREATE OR REPLACE VIEW v_financas_geral AS
-    SELECT 
+    SELECT
         f.data_emissao AS data,
         f.valor_transacao AS valor,
         fav.id_favorecido,
@@ -19,9 +25,9 @@ def create_semantic_views():
         u.id_ug,
         u.ug AS unidade_pagadora,
         n.id_natureza,
-        n.desc_elemento AS tipo_despesa,
+        n.elemento AS tipo_despesa,
         p.id_programa,
-        p.desc_programa AS programa_governo,
+        p.programa AS programa_governo,
         f.observacao AS historico_detalhado
     FROM fato_execucao f
     LEFT JOIN dim_favorecido fav ON f.id_favorecido = fav.id_favorecido
@@ -33,13 +39,13 @@ def create_semantic_views():
     try:
         with engine.connect() as conn:
             conn.execute(text(sql_view))
-            conn.commit()  # Importante para efetivar a criação
+            conn.commit()
 
-        print("✅ SUCESSO! View 'v_financas_geral' criada.")
-        print("   Agora o Agente SQL pode fazer: SELECT sum(valor) FROM v_financas_geral WHERE ...")
+        print("[OK] View 'v_financas_geral' criada com sucesso.")
+        print("     Agentes SQL podem usar: SELECT sum(valor) FROM v_financas_geral WHERE ...")
 
     except Exception as e:
-        print(f"❌ Erro ao criar View: {e}")
+        print(f"[ERRO] Falha ao criar View: {e}")
 
 
 if __name__ == "__main__":

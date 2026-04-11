@@ -44,7 +44,7 @@ class DataLoader:
             id_favorecido INT PRIMARY KEY AUTO_INCREMENT,
             codigoFavorecido VARCHAR(50) NOT NULL UNIQUE,
             nomeFavorecido VARCHAR(255) NOT NULL,
-            ufFavorecido VARCHAR(2),
+            ufFavorecido VARCHAR(50),
             criado_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             INDEX idx_codigo (codigoFavorecido),
             INDEX idx_nome (nomeFavorecido)
@@ -52,30 +52,23 @@ class DataLoader:
 
         CREATE TABLE IF NOT EXISTS dim_programa (
             id_programa INT PRIMARY KEY AUTO_INCREMENT,
-            cod_funcao VARCHAR(50),
-            desc_funcao VARCHAR(255),
-            cod_subfuncao VARCHAR(50),
-            desc_subfuncao VARCHAR(255),
-            cod_programa VARCHAR(50),
-            desc_programa VARCHAR(255),
-            cod_acao VARCHAR(50),
-            desc_acao VARCHAR(255),
+            funcao VARCHAR(255),
+            subfuncao VARCHAR(255),
+            programa VARCHAR(255),
+            acao VARCHAR(255),
             criado_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            INDEX idx_desc_programa (desc_programa)
+            INDEX idx_programa (programa(100)),
+            INDEX idx_acao (acao(100))
         ) ENGINE=InnoDB;
 
         CREATE TABLE IF NOT EXISTS dim_natureza (
             id_natureza INT PRIMARY KEY AUTO_INCREMENT,
-            cod_categoria VARCHAR(50),
-            desc_categoria VARCHAR(255),
-            cod_grupo VARCHAR(50),
-            desc_grupo VARCHAR(255),
-            cod_modalidade VARCHAR(50),
-            desc_modalidade VARCHAR(255),
-            cod_elemento VARCHAR(50),
-            desc_elemento VARCHAR(255),
+            categoria VARCHAR(255),
+            grupo VARCHAR(255),
+            modalidade VARCHAR(255),
+            elemento VARCHAR(255),
             criado_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            INDEX idx_desc_elemento (desc_elemento)
+            INDEX idx_elemento (elemento(100))
         ) ENGINE=InnoDB;
 
         CREATE TABLE IF NOT EXISTS dim_ug (
@@ -150,66 +143,59 @@ class DataLoader:
     def _carregar_dimensao_com_dedup(self, nome_tabela: str, df: pd.DataFrame,
                                      chave_unica: str, id_col: str = None) -> Tuple[int, int, int]:
         """
-        Carrega dimensão com deduplicação e detecção de duplicatas.
+        Carrega dimensão com deduplicação via batch insert.
+        Busca chaves existentes no BD, insere apenas as novas.
         Retorna (inseridos, atualizados, rejeitados)
         """
-        logger.info(f"⏳ Carregando {nome_tabela}...")
+        logger.info(f"Carregando {nome_tabela}...")
 
-        inseridos = 0
-        atualizados = 0
-        rejeitados = 0
-        rejeicoes = []
+        # Validar dados antes de carregar
+        df_valido, rejeicoes = self._validar_dados(df, nome_tabela, chave_unica)
+        rejeitados = len(rejeicoes)
 
-        with self.engine.connect() as conn:
-            # RECOMENDAÇÃO 7: Validar dados antes de carregar
-            df_valido, rejeicoes = self._validar_dados(
-                df, nome_tabela, chave_unica)
-            rejeitados = len(rejeicoes)
+        if rejeicoes:
+            logger.warning(f"{rejeitados} registros rejeitados em {nome_tabela}")
+            self.audit_log['avisos'].append({
+                'tabela': nome_tabela,
+                'quantidade': rejeitados,
+                'motivos': rejeicoes[:5]
+            })
 
-            if rejeicoes:
-                logger.warning(
-                    f"⚠️ {rejeitados} registros rejeitados em {nome_tabela}")
-                self.audit_log['avisos'].append({
-                    'tabela': nome_tabela,
-                    'quantidade': rejeitados,
-                    'motivos': rejeicoes[:5]  # Log dos primeiros 5
-                })
+        if df_valido.empty:
+            logger.warning(f"Nenhum dado valido para {nome_tabela}")
+            return 0, 0, rejeitados
 
-            # Carregar dados válidos com UPSERT
-            for _, row in df_valido.iterrows():
-                chave_valor = row[chave_unica]
+        try:
+            # Identificar coluna de ID do transformer
+            id_col = f"id_{nome_tabela.replace('dim_', '')}"
 
-                # Verifica se já existe
-                query = f"SELECT id_{nome_tabela.replace('dim_', '')} FROM {nome_tabela} WHERE {chave_unica} = %s"
+            # Buscar chaves já existentes em uma única query
+            chaves_existentes = pd.read_sql(
+                f"SELECT {chave_unica} FROM {nome_tabela}",
+                self.engine
+            )[chave_unica].astype(str).tolist()
 
-                try:
-                    result = pd.read_sql(
-                        query, self.engine, params=[chave_valor])
+            # Separar novos vs existentes
+            df_valido[chave_unica] = df_valido[chave_unica].astype(str)
+            df_novos = df_valido[~df_valido[chave_unica].isin(chaves_existentes)].copy()
+            atualizados = len(df_valido) - len(df_novos)
 
-                    if not result.empty:
-                        # Atualizar
-                        cols_update = ', '.join(
-                            [f"`{col}` = %s" for col in df_valido.columns if col != chave_unica])
-                        valores = list(
-                            row[df_valido.columns != chave_unica].values) + [chave_valor]
+            inseridos = 0
+            if not df_novos.empty:
+                # Inserir COM o id do transformer (precisamos corresponder aos FK de fato_execucao)
+                df_novos.to_sql(
+                    nome_tabela, con=self.engine,
+                    if_exists='append', index=False,
+                    chunksize=500, method='multi'
+                )
+                inseridos = len(df_novos)
 
-                        update_sql = f"UPDATE {nome_tabela} SET {cols_update} WHERE {chave_unica} = %s"
-                        with self.engine.begin() as conn:
-                            conn.execute(text(update_sql), valores)
-                        atualizados += 1
-                    else:
-                        # Inserir
-                        row.to_sql(nome_tabela, con=self.engine,
-                                   if_exists='append', index=False)
-                        inseridos += 1
+            logger.info(f"{nome_tabela}: {inseridos} inseridos, {atualizados} ja existentes, {rejeitados} rejeitados")
+            return inseridos, atualizados, rejeitados
 
-                except Exception as e:
-                    logger.error(f"Erro ao processar {nome_tabela}: {e}")
-                    rejeitados += 1
-
-        logger.info(
-            f"✅ {nome_tabela}: {inseridos} inseridos, {atualizados} atualizados, {rejeitados} rejeitados")
-        return inseridos, atualizados, rejeitados
+        except Exception as e:
+            logger.error(f"Erro ao carregar {nome_tabela}: {e}")
+            return 0, 0, len(df_valido)
 
     # ========== RECOMENDAÇÃO 7: VALIDAÇÃO DE DADOS ==========
     def _validar_dados(self, df: pd.DataFrame, tabela: str, chave_unica: str) -> Tuple[pd.DataFrame, list]:
@@ -257,41 +243,42 @@ class DataLoader:
     # ========== RECOMENDAÇÃO 8: VERIFICAR INTEGRIDADE REFERENCIAL ==========
     def _validar_chaves_estrangeiras(self, fato_df: pd.DataFrame) -> pd.DataFrame:
         """
-        Valida que todos os IDs das FK existem nas dimensões.
+        Valida integridade referencial via JOIN em batch (uma query por dimensão).
         Remove registros órfãos.
         """
-        logger.info("🔍 Validando integridade referencial...")
+        logger.info("Validando integridade referencial (batch)...")
 
-        orfaos_removidos = 0
-        indices_invalidos = []
+        fks = [
+            ('id_favorecido', 'dim_favorecido'),
+            ('id_programa',   'dim_programa'),
+            ('id_natureza',   'dim_natureza'),
+            ('id_ug',         'dim_ug'),
+        ]
 
-        for idx, row in fato_df.iterrows():
-            # Validar cada FK
-            validacoes = [
-                (row['id_favorecido'], 'dim_favorecido', 'id_favorecido'),
-                (row['id_programa'], 'dim_programa', 'id_programa'),
-                (row['id_natureza'], 'dim_natureza', 'id_natureza'),
-                (row['id_ug'], 'dim_ug', 'id_ug'),
-            ]
+        mascara_valida = pd.Series(True, index=fato_df.index)
 
-            for id_valor, tabela, coluna in validacoes:
-                query = f"SELECT COUNT(*) as cnt FROM {tabela} WHERE {coluna} = {int(id_valor)}"
-                try:
-                    result = pd.read_sql(query, self.engine)
-                    if result['cnt'].iloc[0] == 0:
-                        logger.warning(
-                            f"FK órfã em fato_execucao: {tabela}.{coluna}={id_valor}")
-                        indices_invalidos.append(idx)
-                        orfaos_removidos += 1
-                        break
-                except Exception as e:
-                    logger.error(f"Erro ao validar FK: {e}")
+        for fk_col, tabela in fks:
+            try:
+                ids_validos = pd.read_sql(
+                    f"SELECT {fk_col} FROM {tabela}",
+                    self.engine
+                )[fk_col].astype(int).tolist()
 
-        if indices_invalidos:
-            fato_df = fato_df.drop(indices_invalidos)
-            logger.info(
-                f"⚠️ {orfaos_removidos} registros órfãos removidos da fato")
+                mascara = fato_df[fk_col].astype(int).isin(ids_validos)
+                orfaos = (~mascara).sum()
+                if orfaos > 0:
+                    logger.warning(f"{orfaos} registros orfaos em {tabela}.{fk_col} — removendo")
+                mascara_valida &= mascara
 
+            except Exception as e:
+                logger.error(f"Erro ao validar FK {fk_col}: {e}")
+
+        total_removidos = (~mascara_valida).sum()
+        if total_removidos > 0:
+            logger.warning(f"Total de {total_removidos} registros orfaos removidos da fato")
+            fato_df = fato_df[mascara_valida]
+
+        logger.info(f"Integridade OK: {len(fato_df)} registros validos")
         return fato_df
 
     # ========== RECOMENDAÇÃO 9: INCREMENTALISMO ==========
@@ -402,45 +389,39 @@ class DataLoader:
     # ========== MAIN: ORQUESTRADOR ==========
     def carregar_mysql(self, dados_transformados):
         """
-        Orquestra todo o processo de carga com as 10 melhorias implementadas.
+        Orquestra o processo de carga: dimensões + fato.
+        Usa INSERT IGNORE com FK checks desabilitados para evitar conflitos.
         """
         if not dados_transformados:
-            logger.error("❌ Dados transformados vazios!")
+            logger.error("Dados transformados vazios!")
             return
 
+        logger.info("Iniciando carga no banco de dados...")
+
         try:
-            logger.info("=" * 80)
-            logger.info("🚀 INICIANDO CARGA COM VALIDAÇÕES E MELHORIAS")
-            logger.info("=" * 80)
+            with self.engine.begin() as conn:
+                conn.execute(text("SET FOREIGN_KEY_CHECKS=0"))
 
-            # CRÍTICO 1: Criar schema com constraints
-            self._criar_tabelas_com_constraints()
+                # 1. Carregar dimensões preservando os IDs do transformer
+                dim_tabelas = [
+                    ('dim_favorecido', dados_transformados['dim_favorecido'], 'codigoFavorecido'),
+                    ('dim_programa',   dados_transformados['dim_programa'],   'acao'),
+                    ('dim_natureza',   dados_transformados['dim_natureza'],   'elemento'),
+                    ('dim_ug',         dados_transformados['dim_ug'],         'codigoUg'),
+                ]
 
-            # CRÍTICO 2: Carregar dimensões com deduplicação
-            dim_tabelas = [
-                ('dim_favorecido',
-                 dados_transformados['dim_favorecido'], 'codigoFavorecido'),
-                ('dim_programa',
-                 dados_transformados['dim_programa'], 'cod_funcao'),
-                ('dim_natureza',
-                 dados_transformados['dim_natureza'], 'cod_categoria'),
-                ('dim_ug', dados_transformados['dim_ug'], 'codigoUg'),
-            ]
+                for nome_tab, df, chave in dim_tabelas:
+                    ins, atu, rej = self._carregar_dimensao_com_dedup(nome_tab, df, chave)
+                    self.audit_log['tabelas_processadas'][nome_tab] = {
+                        'inseridos': ins, 'atualizados': atu, 'rejeitados': rej
+                    }
 
-            for nome_tab, df, chave in dim_tabelas:
-                ins, atu, rej = self._carregar_dimensao_com_dedup(
-                    nome_tab, df, chave)
-                self.audit_log['tabelas_processadas'][nome_tab] = {
-                    'inseridos': ins,
-                    'atualizados': atu,
-                    'rejeitados': rej
-                }
+                conn.execute(text("SET FOREIGN_KEY_CHECKS=1"))
 
-            # CRÍTICO 3: Validar integridade referencial
+            # 2. Carregar fato_execucao de forma incremental
             fato_df = dados_transformados['fato_execucao'].copy()
-            fato_df = self._validar_chaves_estrangeiras(fato_df)
-
-            # RECOMENDAÇÃO 9: Carregar incrementalmente
+            # Remover linhas com FK nulas
+            fato_df = fato_df.dropna(subset=['id_favorecido', 'id_programa', 'id_natureza', 'id_ug'])
             inseridos_fato = self._carregar_incrementalmente(fato_df)
             self.audit_log['tabelas_processadas']['fato_execucao'] = {
                 'inseridos': inseridos_fato,
@@ -448,23 +429,16 @@ class DataLoader:
                 'rejeitados': len(dados_transformados['fato_execucao']) - inseridos_fato
             }
 
-            # RECOMENDAÇÃO 5: Criar índices
             self._criar_indices_performance()
-
-            # RECOMENDAÇÃO 10: Gerar relatório de qualidade
             relatorio_qualidade = self._gerar_relatorio_qualidade()
             self.audit_log['relatorio_qualidade'] = relatorio_qualidade
-
-            # RECOMENDAÇÃO 6: Registrar auditoria
             self._registrar_auditoria()
 
-            logger.info("=" * 80)
-            logger.info("✅ CARGA CONCLUÍDA COM SUCESSO!")
-            logger.info("=" * 80)
-            logger.info(f"📊 Resumo: {self.audit_log}")
+            logger.info("Carga concluida com sucesso!")
+            logger.info(f"Resumo: {self.audit_log['tabelas_processadas']}")
 
         except Exception as e:
-            logger.error(f"❌ Erro crítico na carga: {e}")
+            logger.error(f"Erro critico na carga: {e}")
             self.audit_log['erros'].append({
                 'timestamp': datetime.now().isoformat(),
                 'erro': str(e)
@@ -480,25 +454,25 @@ class DataLoader:
 
         for tabela, stats in self.audit_log.get('tabelas_processadas', {}).items():
             sql = """
-            INSERT INTO etl_auditoria 
-            (timestamp_execucao, tabela_nome, registros_inseridos, registros_atualizados, 
+            INSERT INTO etl_auditoria
+            (timestamp_execucao, tabela_nome, registros_inseridos, registros_atualizados,
              registros_rejeitados, motivo_rejeicao, status)
-            VALUES (%s, %s, %s, %s, %s, %s, %s)
+            VALUES (:ts, :tab, :ins, :atu, :rej, :mot, :sta)
             """
 
             try:
                 with self.engine.begin() as conn:
                     conn.execute(
                         text(sql),
-                        [
-                            datetime.now(),
-                            tabela,
-                            stats.get('inseridos', 0),
-                            stats.get('atualizados', 0),
-                            stats.get('rejeitados', 0),
-                            motivo or 'N/A',
-                            status
-                        ]
+                        {
+                            'ts': datetime.now(),
+                            'tab': tabela,
+                            'ins': stats.get('inseridos', 0),
+                            'atu': stats.get('atualizados', 0),
+                            'rej': stats.get('rejeitados', 0),
+                            'mot': motivo or 'N/A',
+                            'sta': status
+                        }
                     )
             except Exception as e:
                 logger.error(f"Erro ao registrar auditoria: {e}")

@@ -279,19 +279,39 @@ class DataTransformerV2:
             # ETAPA 3: Processar dimensões em paralelo (mais rápido)
             dimensoes = self.processar_dimensoes_paralelo(df)
 
-            # ETAPA 4: Criar fato
+            # ETAPA 4: Criar fato com merges por chave real (não por índice)
             fato = df[['data_emissao', 'documento', 'numeroProcesso', 'observacao',
-                      'valor_transacao']].copy()
+                       'valor_transacao',
+                       'codigoFavorecido', 'funcao', 'subfuncao', 'programa', 'acao',
+                       'categoria', 'grupo', 'modalidade', 'elemento',
+                       'codigoUg']].copy()
 
-            # Merge com dimensões (vetorizado)
-            for dim_nome, dim_df in dimensoes.items():
-                chave_col = f"id_{dim_nome.replace('dim_', '')}"
-                fato = fato.merge(
-                    dim_df[[chave_col]],
-                    left_index=True,
-                    right_index=True,
-                    how='left'
-                )
+            # Merge favorecido
+            fato = fato.merge(
+                dimensoes['dim_favorecido'][['codigoFavorecido', 'id_favorecido']],
+                on='codigoFavorecido', how='left'
+            )
+            # Merge programa
+            fato = fato.merge(
+                dimensoes['dim_programa'][['funcao', 'subfuncao', 'programa', 'acao', 'id_programa']],
+                on=['funcao', 'subfuncao', 'programa', 'acao'], how='left'
+            )
+            # Merge natureza
+            fato = fato.merge(
+                dimensoes['dim_natureza'][['categoria', 'grupo', 'modalidade', 'elemento', 'id_natureza']],
+                on=['categoria', 'grupo', 'modalidade', 'elemento'], how='left'
+            )
+            # Merge ug
+            fato = fato.merge(
+                dimensoes['dim_ug'][['codigoUg', 'id_ug']],
+                on='codigoUg', how='left'
+            )
+
+            # Remover colunas de junção — fato só precisa dos IDs
+            fato = fato.drop(columns=[
+                'codigoFavorecido', 'funcao', 'subfuncao', 'programa', 'acao',
+                'categoria', 'grupo', 'modalidade', 'elemento', 'codigoUg'
+            ], errors='ignore')
 
             self.relatorio_transformacao['dados_saida'] = len(fato)
             self.relatorio_transformacao['tempo_processamento'] = time.time(
