@@ -65,7 +65,7 @@ section[data-testid="stSidebar"] {
 section[data-testid="stSidebar"] > div { padding-top: 0 !important; }
 
 /* === CHAT BUBBLES === */
-[data-testid="stChatMessage"] {
+div[data-testid="stChatMessage"] {
     border-radius: var(--radius-lg) !important;
     padding: 1rem 1.25rem !important;
     margin-bottom: 0.75rem !important;
@@ -95,17 +95,17 @@ section[data-testid="stSidebar"] > div { padding-top: 0 !important; }
 }
 
 /* === METRICS === */
-[data-testid="stMetric"] {
+div[data-testid="stMetric"] {
     background-color: var(--white);
     border-radius: var(--radius-md);
     padding: 0.75rem 1rem !important;
     box-shadow: var(--shadow);
 }
-[data-testid="stMetricValue"] {
+div[data-testid="stMetricValue"] {
     color: var(--green-dark) !important;
     font-weight: 700 !important;
 }
-[data-testid="stMetricLabel"] {
+div[data-testid="stMetricLabel"] {
     color: var(--gray-mid) !important;
     font-size: 0.7rem !important;
     text-transform: uppercase;
