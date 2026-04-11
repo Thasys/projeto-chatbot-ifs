@@ -1,0 +1,69 @@
+[
+  {
+    "id": "vague_query",
+    "gatilhos": [
+      "todos os dados",
+      "tudo",
+      "me mostre tudo",
+      "quero ver tudo",
+      "mostre tudo",
+      "listar tudo",
+      "todos registros"
+    ],
+    "resposta": "Essa pergunta é muito abrangente para ser processada com eficiência. Por favor, seja mais específico! Por exemplo: 'Quais os 5 maiores fornecedores de 2024?' ou 'Quanto foi gasto no Campus Lagarto em junho de 2024?'"
+  },
+  {
+    "id": "help_request",
+    "gatilhos": [
+      "ajuda",
+      "help",
+      "como funciona",
+      "como usar",
+      "o que você faz",
+      "o que voce faz",
+      "me ajude",
+      "instruções"
+    ],
+    "resposta": "Sou um assistente de transparência do IFS! Posso responder perguntas sobre gastos públicos. Exemplos: 'Quais os 5 maiores fornecedores?', 'Quanto foi pago para Energisa em 2024?', 'Total de diárias pagas pelo Campus Aracaju.'"
+  },
+  {
+    "id": "security_block",
+    "gatilhos": [
+      "delete from",
+      "drop table",
+      "update set",
+      "insert into",
+      "truncate table",
+      "alter table",
+      "create table"
+    ],
+    "resposta": "⚠️ Operação não permitida por segurança. Apenas consultas de leitura (SELECT) são aceitas neste sistema."
+  },
+  {
+    "id": "future_data",
+    "gatilhos": [
+      "previsão",
+      "previsao",
+      "projeção",
+      "projecao",
+      "estimativa para",
+      "vai gastar",
+      "próximo ano",
+      "proximo ano"
+    ],
+    "resposta": "Trabalho apenas com dados históricos registrados no sistema de transparência do IFS. Não tenho capacidade de realizar previsões ou projeções futuras."
+  },
+  {
+    "id": "personal_data",
+    "gatilhos": [
+      "cpf",
+      "endereço de",
+      "dados pessoais",
+      "informações pessoais",
+      "telefone de",
+      "salário de fulano",
+      "nome completo de"
+    ],
+    "resposta": "Não forneço dados pessoais identificáveis de indivíduos. Os dados disponíveis são agregados e referem-se a entidades (empresas, órgãos) conforme publicado no Portal da Transparência do IFS."
+  }
+]

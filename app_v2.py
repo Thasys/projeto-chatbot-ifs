@@ -11,6 +11,7 @@ from crew_definition_v2 import IFSCrewV2
 from llm_factory import LLMFactory
 from db_connection import DBConnection
 from audit_logger import log_to_audit, create_audit_table
+from guardrails import Guardrails
 
 # ========== LOGGING ==========
 logger = logging.getLogger(__name__)
@@ -55,6 +56,11 @@ def get_db_connection():
 @st.cache_resource
 def get_crew():
     return IFSCrewV2(use_json_mode=True, cache_ttl=300)
+
+
+@st.cache_resource
+def get_guardrails():
+    return Guardrails("config/respostas_prontas.json")
 
 
 @st.cache_resource
@@ -110,7 +116,19 @@ def process_input(user_input: str):
         st.error(erro)
         return
 
-    # VALIDAÇÃO 2: Rate limiting
+    # VALIDAÇÃO 2: Guardrails (perguntas vagas, perigosas ou fora de escopo)
+    guardrails = get_guardrails()
+    resposta_pronta = guardrails.check_intent(user_input)
+    if resposta_pronta:
+        st.session_state.messages.append({"role": "user", "content": user_input})
+        with st.chat_message("user"):
+            st.markdown(user_input)
+        with st.chat_message("assistant"):
+            st.warning(resposta_pronta)
+        st.session_state.messages.append({"role": "assistant", "content": resposta_pronta})
+        return
+
+    # VALIDAÇÃO 3: Rate limiting
     permitido, msg_rate = verificar_rate_limit()
     if not permitido:
         st.warning(msg_rate)

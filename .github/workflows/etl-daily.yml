@@ -69,7 +69,7 @@ jobs:
       - name: 🚀 Run ETL Pipeline
         run: |
           echo "🔄 Iniciando coleta de dados do Portal da Transparência..."
-          python etl_scripts/main.py
+          python etl/main.py
           echo "✅ ETL Pipeline concluído com sucesso!"
         env:
           DB_HOST: ${{ secrets.DB_HOST }}
@@ -88,8 +88,8 @@ jobs:
           if [ -f "etl_logs.log" ]; then
             cp etl_logs.log etl-logs-artifacts/etl_$(date +%Y%m%d_%H%M%S).log
           fi
-          if [ -f "etl_scripts/etl_output.log" ]; then
-            cp etl_scripts/etl_output.log etl-logs-artifacts/etl_detailed_$(date +%Y%m%d_%H%M%S).log
+          if [ -f "logs/etl.log" ]; then
+            cp logs/etl.log etl-logs-artifacts/etl_detailed_$(date +%Y%m%d_%H%M%S).log
           fi
       
       # 7. Upload logs como artifacts (mantém histórico)

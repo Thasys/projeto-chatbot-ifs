@@ -33,7 +33,7 @@ ENV PYTHONUNBUFFERED=1 \
     PYTHONOPTIMIZE=2
 
 # Criar diretórios necessários
-RUN mkdir -p /app/reports /app/dados_brutos /app/etl_scripts /app/.streamlit
+RUN mkdir -p /app/reports /app/data/raw /app/etl /app/logs /app/.streamlit
 
 # Copiar dependências do builder (CORRIGIDO: python3.12, não python3.13)
 COPY --from=builder /usr/local/lib/python3.12/site-packages /usr/local/lib/python3.12/site-packages

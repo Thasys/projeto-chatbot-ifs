@@ -245,6 +245,9 @@ def get_audit_logs(
     """
     db = DBConnection()
 
+    # Clamp seguro: evita interpolação direta de valor externo no SQL
+    safe_limit = max(1, min(int(limit), 10000))
+
     query = "SELECT * FROM chat_audit_log WHERE 1=1"
     params = {}
 
@@ -256,7 +259,7 @@ def get_audit_logs(
         query += " AND user_id = :user_id"
         params['user_id'] = user_id_filter
 
-    query += f" ORDER BY timestamp DESC LIMIT {limit}"
+    query += f" ORDER BY timestamp DESC LIMIT {safe_limit}"
 
     try:
         return db.execute_query(query, params)

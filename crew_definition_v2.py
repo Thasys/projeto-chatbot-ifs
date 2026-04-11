@@ -106,6 +106,33 @@ class IFSCrewV2:
         self.use_json_mode = use_json_mode
         self.cache_ttl = cache_ttl
         self.query_cache = {}  # Cache simples em memória
+        self._latest_data_year: int = None  # Cache do último ano com dados
+
+    def _get_latest_data_year(self) -> int:
+        """
+        Retorna o último ano com dados na view v_financas_geral.
+        Cacheia o resultado na instância para evitar query repetida.
+        Faz fallback para o ano anterior ao atual se o banco não responder.
+        """
+        if self._latest_data_year is not None:
+            return self._latest_data_year
+
+        try:
+            from db_connection import DBConnection
+            db = DBConnection()
+            result = db.execute_query("SELECT MAX(YEAR(data)) AS ano FROM v_financas_geral")
+            if result and result[0].get('ano'):
+                self._latest_data_year = int(result[0]['ano'])
+                logger.info(f"✅ Último ano com dados: {self._latest_data_year}")
+                return self._latest_data_year
+        except Exception as e:
+            logger.warning(f"⚠️ Não foi possível obter último ano com dados: {e}")
+
+        # Fallback: ano anterior ao atual
+        fallback = datetime.now().year - 1
+        self._latest_data_year = fallback
+        logger.warning(f"⚠️ Usando ano de fallback: {fallback}")
+        return fallback
 
     # ========== MELHORIA 1: JSON MODE DO OPENAI ==========
     def _extract_json_safe(self, text: str) -> dict:
@@ -115,7 +142,7 @@ class IFSCrewV2:
         try:
             # Tentativa 1: JSON puro
             return json.loads(text)
-        except:
+        except Exception:
             pass
 
         try:
@@ -123,7 +150,7 @@ class IFSCrewV2:
             json_match = re.search(r'\{.*\}', text, re.DOTALL)
             if json_match:
                 return json.loads(json_match.group(0))
-        except:
+        except Exception:
             pass
 
         # Fallback 3: Criar JSON de fallback com detecção automática
@@ -148,7 +175,7 @@ class IFSCrewV2:
         """
         Retorna query do cache se existir e ainda for válida.
         """
-        cache_key = hash(user_question) % 10000
+        cache_key = hash(user_question)
 
         if cache_key in self.query_cache:
             cached_query, timestamp = self.query_cache[cache_key]
@@ -162,7 +189,7 @@ class IFSCrewV2:
 
     def _cache_query(self, user_question: str, query: str):
         """Salva query no cache."""
-        cache_key = hash(user_question) % 10000
+        cache_key = hash(user_question)
         self.query_cache[cache_key] = (query, datetime.now())
 
     # ========== MELHORIA 3: PROMPTS MAIS ESPECÍFICOS ==========
@@ -172,6 +199,7 @@ class IFSCrewV2:
         today = datetime.now()
         current_date_str = today.strftime("%Y-%m-%d")
         current_year = today.year
+        latest_data_year = self._get_latest_data_year()
         last_month = (today.replace(day=1) -
                       timedelta(days=1)).strftime("%Y-%m")
 
@@ -180,20 +208,22 @@ class IFSCrewV2:
             role='🔍 Data Detective',
             goal='Extract user intent, find entities using tools, and return VALID JSON.',
             backstory=(
-                f"You are a JSON-outputting data extractor. Today: {current_date_str}. Year: {current_year}.\n"
+                f"You are a JSON-outputting data extractor. Today: {current_date_str}. Current year: {current_year}.\n"
+                f"IMPORTANT: The database contains data up to {latest_data_year}. "
+                f"When the user does NOT mention a specific year, ALWAYS use {latest_data_year} as the default year in date_filter.\n"
                 "CRITICAL RULES:\n"
                 "1. ALWAYS output ONLY a valid JSON object (no text before/after)\n"
                 "2. Identify intent: RANKING (user asks for 'top', 'maiores'), TOTAL (user asks for 'quanto', 'total'), or SEARCH\n"
                 "3. Use 'Search Entity Fuzzy' tool to find entities\n"
                 "4. Return JSON with these EXACT fields:\n"
-                '   {"intent": "RANKING"|"TOTAL"|"SEARCH", "entities": [...], "date_filter": null, "action": "EXECUTE_SQL"}\n'
+                '   {"intent": "RANKING"|"TOTAL"|"SEARCH", "entities": [...], "date_filter": "<year>", "action": "EXECUTE_SQL"}\n'
                 "5. If entity not found, still return JSON\n"
                 "6. **FIX RULE**: If query is TOTAL query asking for overall IFS data (e.g., 'total de gastos do IFS'),\n"
                 "   treat as TOTAL without entities. DO NOT search for 'IFS' as entity. Only search for specific companies.\n"
-                "\nExamples:\n"
-                '- User: "Top 5 fornecedores" → {"intent": "RANKING", "entities": [], ...}\n'
-                '- User: "Quanto para Energisa" → {"intent": "TOTAL", "entities": [Energisa found], ...}\n'
-                '- User: "Total de gastos do IFS em 2024" → {"intent": "TOTAL", "entities": [], ...} NO SEARCH for IFS!\n'
+                f"\nExamples (assuming latest data year = {latest_data_year}):\n"
+                f'- User: "Top 5 fornecedores" → {{"intent": "RANKING", "entities": [], "date_filter": "{latest_data_year}", "action": "EXECUTE_SQL"}}\n'
+                f'- User: "Quanto para Energisa" → {{"intent": "TOTAL", "entities": [Energisa found], "date_filter": "{latest_data_year}", "action": "EXECUTE_SQL"}}\n'
+                f'- User: "Total de gastos do IFS em 2023" → {{"intent": "TOTAL", "entities": [], "date_filter": "2023", "action": "EXECUTE_SQL"}}\n'
             ),
             tools=[search_entity_fuzzy],
             verbose=True,
@@ -208,18 +238,19 @@ class IFSCrewV2:
             backstory=(
                 "You are a SQL execution engine. You receive JSON and build queries.\n"
                 f"SCHEMA: v_financas_geral (data, valor, favorecido_nome, id_favorecido, id_ug, tipo_despesa, id_programa, id_natureza)\n"
-                f"CURRENT YEAR: {current_year}\n"
+                f"DEFAULT YEAR (latest data available): {latest_data_year}\n"
+                f"If date_filter in JSON is null or missing, use YEAR(data) = {latest_data_year}.\n"
                 "\nCRITICAL RULES FOR AGGREGATION:\n"
                 "**FIX RULE**: If intent=TOTAL and entity is 'IFS', IGNORE it and generate a total SUM without WHERE clause.\n"
                 "1. RANKING queries: MUST use GROUP BY + ORDER BY DESC + LIMIT 5\n"
-                "   Example: SELECT favorecido_nome, SUM(valor) as total FROM v_financas_geral WHERE YEAR(data)={current_year} GROUP BY favorecido_nome ORDER BY total DESC LIMIT 5\n"
+                f"   Example: SELECT favorecido_nome, SUM(valor) as total FROM v_financas_geral WHERE YEAR(data)={latest_data_year} GROUP BY favorecido_nome ORDER BY total DESC LIMIT 5\n"
                 "\n2. TOTAL queries: MUST use SUM(valor) aggregation\n"
-                "   Example: SELECT SUM(valor) as total FROM v_financas_geral WHERE YEAR(data)={current_year}\n"
+                f"   Example: SELECT SUM(valor) as total FROM v_financas_geral WHERE YEAR(data)={latest_data_year}\n"
                 "\n3. SEARCH queries: Use WHERE with LIKE for fuzzy matching\n"
-                "   Example: SELECT SUM(valor) FROM v_financas_geral WHERE favorecido_nome LIKE '%ENTITY%' AND YEAR(data)={current_year}\n"
+                f"   Example: SELECT SUM(valor) FROM v_financas_geral WHERE favorecido_nome LIKE '%ENTITY%' AND YEAR(data)={latest_data_year}\n"
                 "\n4. PERIOD FILTERING:\n"
-                f"   - Always include YEAR(data) = {current_year} or full date range\n"
-                f"   - For year: 2024-01-01 to 2024-12-31 (FULL YEAR, not partial)\n"
+                f"   - Default: YEAR(data) = {latest_data_year} (use this when no year is specified)\n"
+                f"   - For full year: {latest_data_year}-01-01 to {latest_data_year}-12-31\n"
                 "   - For month: MONTH(data) = N\n"
                 "\n5. FUZZY MATCHING:\n"
                 "   - Use LIKE '%TERM%' with uppercase conversion\n"
@@ -271,7 +302,7 @@ class IFSCrewV2:
         task_mapping = Task(
             description=(
                 f"Analyze: '{user_question}'\n"
-                f"Date context: {current_date_str} | Year: {current_year} | Last month: {last_month}\n"
+                f"Date context: {current_date_str} | Default year (latest data): {latest_data_year} | Last month: {last_month}\n"
                 "OUTPUT ONLY VALID JSON (no markdown, no text)"
             ),
             expected_output="Valid JSON object with intent, entities, date_filter",
@@ -311,39 +342,6 @@ class IFSCrewV2:
             verbose=True,
             memory=True
         )
-
-    def execute_with_timeout(self, crew, user_question: str, timeout: int = 60):
-        """
-        Executa crew com timeout.
-        Nota: Timeout via signal.SIGALRM não funciona no Windows.
-        No Windows, apenas executa normalmente sem timeout.
-        """
-        import platform
-        import signal
-
-        def timeout_handler(signum, frame):
-            raise TimeoutError(f"Query timeout após {timeout}s")
-
-        try:
-            # SIGALRM só existe em Unix/Linux, não no Windows
-            if platform.system() != 'Windows':
-                signal.signal(signal.SIGALRM, timeout_handler)
-                signal.alarm(timeout)
-
-            resultado = crew.kickoff()
-
-            if platform.system() != 'Windows':
-                signal.alarm(0)  # Cancelar alarm
-
-            return resultado
-
-        except TimeoutError as e:
-            logger.error(f"❌ {e}")
-            return f"⏱️ Operação demorou muito. Tente uma pergunta mais específica."
-
-        except Exception as e:
-            logger.error(f"❌ Erro: {e}")
-            return f"❌ Erro na processamento. Detalhes: {str(e)[:100]}"
 
     def execute_with_confidence(self, crew, user_question: str, timeout: int = 60) -> dict:
         """
@@ -396,7 +394,8 @@ class IFSCrewV2:
 
             # ========== P0.3: EXTRAIR METADADOS ==========
             # Analisar resposta para determinar confiança
-            resposta_lower = str(resultado).lower()
+            resposta_str = str(resultado)
+            resposta_lower = resposta_str.lower()
 
             # Verificar fatores de confiança
             tem_dados = not any(word in resposta_lower for word in [
@@ -404,29 +403,29 @@ class IFSCrewV2:
             ])
 
             dados_recentes = not any(word in resposta_lower for word in [
-                'antigo', 'ultrapassado', 'obsoleto', 'atualiz'
+                'antigo', 'ultrapassado', 'obsoleto'
             ]) or 'atualizado' in resposta_lower
 
-            tem_valores = any(char in str(resultado)
-                              for char in ['R$', '0123456789'])
+            # Presença de valores monetários formatados indica resultado real
+            tem_valores_monetarios = 'R$' in resposta_str
+            # Conta quantos valores monetários distintos aparecem (proxy de entidades)
+            entities_count = resposta_str.count('R$')
 
             # Calcular confiança
             confidence = calculate_confidence(
-                has_entities=tem_valores,
-                entities_count=1 if tem_valores else 0,
+                has_entities=tem_valores_monetarios,
+                entities_count=entities_count,
                 has_results=tem_dados,
                 data_is_recent=dados_recentes,
                 fuzzy_match=False,
                 query_type="generic"
             )
 
-            # Criar metadados
-            # ===== FIX 3: CORRIGIR PERÍODO PARA ANO COMPLETO =====
+            # Criar metadados — usar último ano com dados para exibição do período
             now = datetime.now()
-            current_year = now.year
-            # Usar ano completo (2024-01-01 até 2024-12-31), não período parcial
-            periodo_inicio = f"{current_year}-01-01"
-            periodo_fim = f"{current_year}-12-31"
+            latest_year = self._get_latest_data_year()
+            periodo_inicio = f"{latest_year}-01-01"
+            periodo_fim = f"{latest_year}-12-31"
 
             logger.info(
                 f"[DEBUG PERIODO] Período definido: {periodo_inicio} a {periodo_fim}")

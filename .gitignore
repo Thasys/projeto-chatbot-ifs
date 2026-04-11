@@ -9,6 +9,8 @@ secrets/
 # ===== Python & Virtual Environments =====
 .venv
 venv/
+venv_novo/
+venv_python312_test/
 env/
 ENV/
 *.egg-info/
@@ -59,9 +61,9 @@ temp/
 
 # ===== Saídas Geradas =====
 reports/*.csv
-dados_brutos/
-*.csv
-etl_relatorio_*.json
+data/raw/*.csv
+logs/*.log
+logs/etl_relatorio_*.json
 
 # ===== Docker =====
 docker-compose.override.yml

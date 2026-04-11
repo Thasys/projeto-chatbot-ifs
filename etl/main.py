@@ -15,7 +15,7 @@ logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(levelname)s - %(message)s',
     handlers=[
-        logging.FileHandler('etl_logs.log'),
+        logging.FileHandler('logs/etl.log'),
         logging.StreamHandler()
     ]
 )
@@ -197,7 +197,7 @@ class ETLOrchestrator:
             self.relatorio_final['status_geral'] = 'FALHA'
 
         # Salvar relatório em arquivo JSON
-        nome_relatorio = f"etl_relatorio_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
+        nome_relatorio = f"logs/etl_relatorio_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
 
         try:
             with open(nome_relatorio, 'w', encoding='utf-8') as f:

@@ -53,7 +53,7 @@ services:
     volumes:
       # Compartilhar dados com host
       - ./reports:/app/reports
-      - ./dados_brutos:/app/dados_brutos
+      - ./data/raw:/app/data/raw
     networks:
       - ifs_network
     healthcheck:
@@ -86,7 +86,7 @@ services:
       - "8502:8501"
     volumes:
       - ./reports:/app/reports
-      - ./dados_brutos:/app/dados_brutos
+      - ./data/raw:/app/data/raw
     networks:
       - ifs_network
     healthcheck:
@@ -135,12 +135,13 @@ services:
       DB_PASS: ${DB_PASS:-root}
       API_KEY: ${API_KEY:-}
     volumes:
-      - ./etl_scripts:/app/etl_scripts
-      - ./dados_brutos:/app/dados_brutos
+      - ./etl:/app/etl
+      - ./data/raw:/app/data/raw
+      - ./logs:/app/logs
     networks:
       - ifs_network
     # Executar script ETL periodicamente (será integrado com GitHub Actions depois)
-    entrypoint: ["/bin/bash", "-c", "while true; do python /app/etl_scripts/main.py; sleep 86400; done"]
+    entrypoint: ["/bin/bash", "-c", "while true; do python /app/etl/main.py; sleep 86400; done"]
 
 # ========== VOLUMES PERSISTENTES ==========
 volumes:

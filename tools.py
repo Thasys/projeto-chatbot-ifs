@@ -1,6 +1,7 @@
 import pandas as pd
 import os
 import time
+from datetime import datetime
 from crewai.tools import tool
 from db_connection import DBConnection
 from rapidfuzz import process, fuzz, utils
@@ -13,13 +14,21 @@ from knowledge_base import SQL_EXAMPLES
 class EntityCache:
     _instance = None
     _data = {}
+    _load_time: datetime = None
+    CACHE_TTL = 3600  # Recarregar após 1 hora (alinhado ao ETL diário)
 
     @classmethod
     def get_data(cls):
-        if cls._instance is None:
+        now = datetime.now()
+        cache_expired = (
+            cls._load_time is None or
+            (now - cls._load_time).total_seconds() > cls.CACHE_TTL
+        )
+        if cls._instance is None or cache_expired:
             print("🔄 (Cache) Iniciando Carga de Entidades...")
             cls._instance = cls()
             cls._instance._load_cache()
+            cls._load_time = now
         return cls._data
 
     def _load_cache(self):
@@ -229,6 +238,7 @@ def execute_sql(sql_query: str):
                 summary = f"⚠️ **Resultado grande** ({total_rows} linhas). Mostrando resumo:\n\n"
 
                 # Calcular totais de colunas numéricas
+                cols = []
                 numeric_cols = df.select_dtypes(include=['number']).columns
                 if not numeric_cols.empty:
                     cols = [c for c in numeric_cols if not c.startswith('id_')]
@@ -273,6 +283,9 @@ def export_csv(sql_query: str):
     """Exports data to CSV."""
     db = DBConnection()
     try:
+        sql_query = sql_query.strip().replace("```sql", "").replace("```", "")
+        if not sql_query.upper().startswith("SELECT"):
+            return "❌ Error: Only SELECT queries are allowed for safety."
         filename = f"reports/relatorio_{int(time.time())}.csv"
         os.makedirs("reports", exist_ok=True)
         df = pd.read_sql(sql_query, db.get_engine())

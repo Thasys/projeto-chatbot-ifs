@@ -21,4 +21,4 @@ class Config:
     # Banco de Dados MySQL
     DB_URI = f"mysql+mysqlconnector://{os.getenv('DB_USER')}:{os.getenv('DB_PASS')}@{os.getenv('DB_HOST')}:{os.getenv('DB_PORT')}/{os.getenv('DB_NAME')}"
 
-    CAMINHO_SALVAMENTO = os.path.join(os.getcwd(), "dados_brutos")
+    CAMINHO_SALVAMENTO = os.path.join(os.getcwd(), "data", "raw")
