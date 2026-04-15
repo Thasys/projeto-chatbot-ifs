@@ -16,7 +16,7 @@ class LLMFactory:
 
         if provider == "openai":
             model_name = os.getenv("OPENAI_MODEL_NAME", "gpt-4o")
-            print(f"🧠 Init LLM: OpenAI ({model_name})")
+            print(f"[LLM] Init OpenAI ({model_name})")
             return LLM(
                 model=model_name,
                 api_key=os.getenv("OPENAI_API_KEY")
@@ -26,7 +26,7 @@ class LLMFactory:
             model_name = os.getenv("OLLAMA_MODEL_NAME", "llama3")
             base_url = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
 
-            print(f"🦙 Init LLM: Ollama ({model_name}) @ {base_url}")
+            print(f"[LLM] Init Ollama ({model_name}) @ {base_url}")
 
             # O prefixo 'ollama/' é CRUCIAL para o CrewAI saber que é local
             # Se o modelo no .env já tiver 'ollama/', não adicionamos de novo

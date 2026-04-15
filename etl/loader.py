@@ -1,4 +1,4 @@
-from sqlalchemy import create_engine, text, MetaData, Table, Column, Integer, String, Float, Date, ForeignKey, Index
+﻿from sqlalchemy import create_engine, text, MetaData, Table, Column, Integer, String, Float, Date, ForeignKey, Index
 from sqlalchemy.pool import NullPool
 from config import Config
 import pandas as pd
@@ -36,7 +36,7 @@ class DataLoader:
     # ========== RECOMENDAÇÃO 1: CRIAR FOREIGN KEYS ==========
     def _criar_tabelas_com_constraints(self):
         """Cria schema com Foreign Keys e Índices."""
-        logger.info("🏗️ Criando/Validando schema com constraints...")
+        logger.info("[SCHEMA] Criando/Validando schema com constraints...")
 
         sql_schema = """
         -- Dimensões (sem FK)
@@ -236,7 +236,7 @@ class DataLoader:
 
         if rejeicoes:
             logger.warning(
-                f"⚠️ Validação: {len(rejeicoes)} registros rejeitados em {tabela}")
+                f"[AVISO] Validação: {len(rejeicoes)} registros rejeitados em {tabela}")
 
         return df_valido, rejeicoes
 
@@ -287,7 +287,7 @@ class DataLoader:
         Carrega apenas novos registros (baseado em data e documento).
         Evita duplicatas.
         """
-        logger.info("📈 Carregando de forma incremental...")
+        logger.info("[DADOS] Carregando de forma incremental...")
 
         # Pegar datas mínimas/máximas existentes
         query_minmax = "SELECT MIN(data_emissao) as min_data, MAX(data_emissao) as max_data FROM fato_execucao"
@@ -304,10 +304,10 @@ class DataLoader:
         if max_data_db:
             fato_novo = fato_df[fato_df['data_emissao'] > max_data_db]
             logger.info(
-                f"📊 Dados novos desde {max_data_db}: {len(fato_novo)} registros")
+                f"[GRAFICO] Dados novos desde {max_data_db}: {len(fato_novo)} registros")
         else:
             fato_novo = fato_df
-            logger.info(f"📊 Primeira carga: {len(fato_novo)} registros")
+            logger.info(f"[GRAFICO] Primeira carga: {len(fato_novo)} registros")
 
         # Inserir de forma em batch (mais eficiente que linha por linha)
         batch_size = 1000
@@ -320,14 +320,14 @@ class DataLoader:
                              if_exists='append', index=False)
                 inseridos += len(batch)
                 logger.info(
-                    f"✅ Batch {i//batch_size + 1}: {len(batch)} registros inseridos")
+                    f"[OK] Batch {i//batch_size + 1}: {len(batch)} registros inseridos")
 
         return inseridos
 
     # ========== RECOMENDAÇÃO 5: ADICIONAR ÍNDICES ==========
     def _criar_indices_performance(self):
         """Cria índices para melhorar performance de queries."""
-        logger.info("🚀 Criando índices de performance...")
+        logger.info("[INICIO] Criando índices de performance...")
 
         indices_sql = [
             "ALTER TABLE fato_execucao ADD INDEX idx_data_ug (data_emissao, id_ug);",
@@ -340,7 +340,7 @@ class DataLoader:
             for sql in indices_sql:
                 try:
                     conn.execute(text(sql))
-                    logger.info(f"✅ Índice criado: {sql[:50]}...")
+                    logger.info(f"[OK] Índice criado: {sql[:50]}...")
                 except Exception as e:
                     logger.warning(f"Índice pode já existir: {e}")
             conn.commit()
@@ -348,7 +348,7 @@ class DataLoader:
     # ========== RECOMENDAÇÃO 10: DATA QUALITY CHECKS ==========
     def _gerar_relatorio_qualidade(self) -> Dict:
         """Gera relatório de qualidade dos dados carregados."""
-        logger.info("📋 Gerando relatório de qualidade dos dados...")
+        logger.info("[LISTA] Gerando relatório de qualidade dos dados...")
 
         relatorio = {
             'timestamp': datetime.now().isoformat(),
@@ -383,7 +383,7 @@ class DataLoader:
                 except Exception as e:
                     logger.error(f"Erro ao gerar relatório de {tabela}: {e}")
 
-        logger.info(f"✅ Relatório de qualidade: {relatorio}")
+        logger.info(f"[OK] Relatório de qualidade: {relatorio}")
         return relatorio
 
     # ========== MAIN: ORQUESTRADOR ==========
@@ -450,7 +450,7 @@ class DataLoader:
         """
         RECOMENDAÇÃO 6: Registra log de auditoria no banco.
         """
-        logger.info("📝 Registrando auditoria...")
+        logger.info("[NOTA] Registrando auditoria...")
 
         for tabela, stats in self.audit_log.get('tabelas_processadas', {}).items():
             sql = """

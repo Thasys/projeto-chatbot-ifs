@@ -1,4 +1,4 @@
-import logging
+﻿import logging
 import sys
 import json
 import pandas as pd
@@ -23,7 +23,7 @@ logger = logging.getLogger(__name__)
 # Antes de começar:
 loader = DataLoader()
 loader._criar_tabelas_com_constraints()
-logger.info("✅ Schema validado")
+logger.info("[OK] Schema validado")
 
 
 class ETLOrchestrator:
@@ -50,7 +50,7 @@ class ETLOrchestrator:
         Executa etapa de extração com opção de usar backup local.
         """
         logger.info("=" * 80)
-        logger.info("🔄 ETAPA 1: EXTRAÇÃO DE DADOS")
+        logger.info("[RETRY] ETAPA 1: EXTRAÇÃO DE DADOS")
         logger.info("=" * 80)
 
         try:
@@ -74,13 +74,13 @@ class ETLOrchestrator:
             }
 
             logger.info(
-                f"✅ Extração concluída: {len(df_raw)} registros, {len(df_raw.columns)} colunas")
-            logger.info(f"📊 Relatório: {extractor.relatorio_extracao}")
+                f"[OK] Extração concluída: {len(df_raw)} registros, {len(df_raw.columns)} colunas")
+            logger.info(f"[GRAFICO] Relatório: {extractor.relatorio_extracao}")
 
             return df_raw
 
         except Exception as e:
-            logger.error(f"❌ Erro na extração: {e}")
+            logger.error(f"[ERRO] Erro na extração: {e}")
             self.relatorio_final['etapas']['extracao']['status'] = 'ERRO'
             self.relatorio_final['etapas']['extracao']['erros'].append(str(e))
             return None
@@ -91,7 +91,7 @@ class ETLOrchestrator:
         Executa etapa de transformação com validações.
         """
         logger.info("=" * 80)
-        logger.info("🔄 ETAPA 2: TRANSFORMAÇÃO DE DADOS")
+        logger.info("[RETRY] ETAPA 2: TRANSFORMAÇÃO DE DADOS")
         logger.info("=" * 80)
 
         try:
@@ -127,7 +127,7 @@ class ETLOrchestrator:
                 'relatorio': transformer.relatorio_transformacao
             }
 
-            logger.info("✅ Transformação concluída:")
+            logger.info("[OK] Transformação concluída:")
             for tabela, dados in self.relatorio_final['etapas']['transformacao']['dados']['dimensoes'].items():
                 logger.info(f"   - dim_{tabela}: {dados} registros")
             logger.info(
@@ -136,7 +136,7 @@ class ETLOrchestrator:
             return dados_transformados
 
         except Exception as e:
-            logger.error(f"❌ Erro na transformação: {e}")
+            logger.error(f"[ERRO] Erro na transformação: {e}")
             self.relatorio_final['etapas']['transformacao']['status'] = 'ERRO'
             self.relatorio_final['etapas']['transformacao']['erros'].append(
                 str(e))
@@ -148,7 +148,7 @@ class ETLOrchestrator:
         Executa etapa de carga com validações.
         """
         logger.info("=" * 80)
-        logger.info("🔄 ETAPA 3: CARGA NO BANCO DE DADOS")
+        logger.info("[RETRY] ETAPA 3: CARGA NO BANCO DE DADOS")
         logger.info("=" * 80)
 
         try:
@@ -163,13 +163,13 @@ class ETLOrchestrator:
                 'audit_log': loader.audit_log
             }
 
-            logger.info("✅ Carga concluída com sucesso:")
-            logger.info(f"📊 Auditoria: {loader.audit_log}")
+            logger.info("[OK] Carga concluída com sucesso:")
+            logger.info(f"[GRAFICO] Auditoria: {loader.audit_log}")
 
             return True
 
         except Exception as e:
-            logger.error(f"❌ Erro na carga: {e}")
+            logger.error(f"[ERRO] Erro na carga: {e}")
             self.relatorio_final['etapas']['carga']['status'] = 'ERRO'
             self.relatorio_final['etapas']['carga']['erros'].append(str(e))
             return False
@@ -204,7 +204,7 @@ class ETLOrchestrator:
                 json.dump(self.relatorio_final, f,
                           indent=2, ensure_ascii=False)
 
-            logger.info(f"📄 Relatório salvo: {nome_relatorio}")
+            logger.info(f"[RELATORIO] Relatório salvo: {nome_relatorio}")
 
         except Exception as e:
             logger.error(f"Erro ao salvar relatório: {e}")
@@ -217,7 +217,7 @@ class ETLOrchestrator:
         Executa o pipeline ETL completo.
         """
         inicio_tempo = datetime.now()
-        logger.info("🚀 INICIANDO PIPELINE ETL COMPLETO")
+        logger.info("[INICIO] INICIANDO PIPELINE ETL COMPLETO")
 
         try:
             # Etapa 1: Extração
@@ -245,17 +245,17 @@ class ETLOrchestrator:
 
             logger.info("=" * 80)
             if self.validar_sucesso():
-                logger.info("✅ PIPELINE ETL EXECUTADO COM SUCESSO!")
-                logger.info(f"⏱️ Tempo total: {tempo_total:.2f}s")
+                logger.info("[OK] PIPELINE ETL EXECUTADO COM SUCESSO!")
+                logger.info(f"⏱ Tempo total: {tempo_total:.2f}s")
                 logger.info("=" * 80)
                 return True
             else:
-                logger.error("❌ PIPELINE FINALIZADO COM ERROS")
+                logger.error("[ERRO] PIPELINE FINALIZADO COM ERROS")
                 logger.error("=" * 80)
                 return False
 
         except Exception as e:
-            logger.error(f"❌ ERRO CRÍTICO NO PIPELINE: {e}")
+            logger.error(f"[ERRO] ERRO CRÍTICO NO PIPELINE: {e}")
             self.gerar_relatorio_final()
             return False
 
@@ -268,10 +268,10 @@ def main():
     usar_backup = '--backup' in sys.argv
 
     if usar_backup:
-        logger.info("⚠️ Modo BACKUP LOCAL ativado")
+        logger.info("[AVISO] Modo BACKUP LOCAL ativado")
     else:
         logger.info(
-            "ℹ️ Modo EXTRAÇÃO DA API ativado (use --backup para usar dados locais)")
+            "ℹ Modo EXTRAÇÃO DA API ativado (use --backup para usar dados locais)")
 
     # Executar pipeline
     orchestrator = ETLOrchestrator()

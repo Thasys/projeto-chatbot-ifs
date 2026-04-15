@@ -1,4 +1,4 @@
-import time
+﻿import time
 import os
 import pandas as pd
 import numpy as np
@@ -88,14 +88,14 @@ class DataTransformerV2:
         Processa dados em chunks para economizar memória.
         Essencial para dados > 500MB.
         """
-        logger.info(f"📊 Processando em chunks de {chunk_size} registros...")
+        logger.info(f"[GRAFICO] Processando em chunks de {chunk_size} registros...")
 
         chunks_processados = []
 
         for i in range(0, len(df), chunk_size):
             chunk = df.iloc[i:i + chunk_size].copy()
             logger.info(
-                f"   🔄 Chunk {i // chunk_size + 1}: {len(chunk)} registros")
+                f"   [RETRY] Chunk {i // chunk_size + 1}: {len(chunk)} registros")
 
             # Limpar moeda (vetorizado)
             chunk['valor_transacao'] = self.clean_currency_vectorized(
@@ -112,7 +112,7 @@ class DataTransformerV2:
 
         # Concatenar todos os chunks
         df_processado = pd.concat(chunks_processados, ignore_index=True)
-        logger.info(f"✅ Concatenados {len(chunks_processados)} chunks")
+        logger.info(f"[OK] Concatenados {len(chunks_processados)} chunks")
 
         return df_processado
 
@@ -145,7 +145,7 @@ class DataTransformerV2:
                 )
 
             logger.info(
-                f"✅ {nome_tabela}: {len(df_unique)} registros inseridos com transação")
+                f"[OK] {nome_tabela}: {len(df_unique)} registros inseridos com transação")
 
             return {
                 'status': 'SUCESSO',
@@ -154,7 +154,7 @@ class DataTransformerV2:
             }
 
         except Exception as e:
-            logger.error(f"❌ Erro em transação {nome_tabela}: {e}")
+            logger.error(f"[ERRO] Erro em transação {nome_tabela}: {e}")
             return {
                 'status': 'ERRO',
                 'erro': str(e),
@@ -172,7 +172,7 @@ class DataTransformerV2:
             return self._processar_dimensoes_sequencial(df)
 
         logger.info(
-            f"🚀 Processando dimensões em paralelo ({self.num_workers} workers)...")
+            f"[INICIO] Processando dimensões em paralelo ({self.num_workers} workers)...")
 
         tarefas = [
             ('dim_favorecido',
@@ -193,7 +193,7 @@ class DataTransformerV2:
         for nome, dados in resultados:
             dimensoes[nome] = dados
 
-        logger.info("✅ Todas as dimensões processadas em paralelo")
+        logger.info("[OK] Todas as dimensões processadas em paralelo")
         return dimensoes
 
     @staticmethod
@@ -235,23 +235,23 @@ class DataTransformerV2:
         """
         Salva dados em formato comprimido (parquet é 10x menor que CSV).
         """
-        logger.info(f"💾 Salvando com compressão ({formato})...")
+        logger.info(f"[SALVO] Salvando com compressão ({formato})...")
 
         try:
             if formato == 'parquet':
                 df.to_parquet(caminho + '.parquet',
                               compression='snappy', index=False)
                 tamanho = os.path.getsize(caminho + '.parquet') / 1024 / 1024
-                logger.info(f"✅ Salvo em parquet: {tamanho:.2f} MB")
+                logger.info(f"[OK] Salvo em parquet: {tamanho:.2f} MB")
 
             elif formato == 'csv_gz':
                 df.to_csv(caminho + '.csv.gz', compression='gzip',
                           sep=';', index=False)
                 tamanho = os.path.getsize(caminho + '.csv.gz') / 1024 / 1024
-                logger.info(f"✅ Salvo em CSV.GZ: {tamanho:.2f} MB")
+                logger.info(f"[OK] Salvo em CSV.GZ: {tamanho:.2f} MB")
 
         except Exception as e:
-            logger.error(f"❌ Erro ao comprimir: {e}")
+            logger.error(f"[ERRO] Erro ao comprimir: {e}")
 
     # ========== MAIN: PROCESSAR COM TUDO OTIMIZADO ==========
     def processar(self, df_raw: pd.DataFrame, engine=None) -> Dict:
@@ -259,11 +259,11 @@ class DataTransformerV2:
         inicio = time.time()
 
         logger.info("=" * 80)
-        logger.info("🚀 TRANSFORMAÇÃO OTIMIZADA (V2)")
+        logger.info("[INICIO] TRANSFORMAÇÃO OTIMIZADA (V2)")
         logger.info("=" * 80)
 
         if df_raw is None or df_raw.empty:
-            logger.error("❌ DataFrame vazio")
+            logger.error("[ERRO] DataFrame vazio")
             return None
 
         self.relatorio_transformacao['dados_entrada'] = len(df_raw)
@@ -318,9 +318,9 @@ class DataTransformerV2:
             ) - inicio
 
             logger.info("=" * 80)
-            logger.info("✅ TRANSFORMAÇÃO CONCLUÍDA")
+            logger.info("[OK] TRANSFORMAÇÃO CONCLUÍDA")
             logger.info(
-                f"⏱️ Tempo: {self.relatorio_transformacao['tempo_processamento']:.2f}s")
+                f"⏱ Tempo: {self.relatorio_transformacao['tempo_processamento']:.2f}s")
             logger.info("=" * 80)
 
             return {
@@ -330,5 +330,5 @@ class DataTransformerV2:
             }
 
         except Exception as e:
-            logger.error(f"❌ Erro: {e}")
+            logger.error(f"[ERRO] Erro: {e}")
             raise

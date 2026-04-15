@@ -31,183 +31,316 @@ st.set_page_config(
 # st.html() renderiza HTML puro sem processar como Markdown — necessário para <style>
 st.html("""
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
-/* === BASE === */
+/* === VARIÁVEIS — TEMA ESCURO === */
 :root {
-    --green-dark:  #1B4F2A;
-    --green-mid:   #2E7D46;
-    --green-light: #4CAF72;
-    --green-pale:  #E8F5EE;
-    --gold:        #F5A623;
-    --red:         #C0392B;
-    --gray-dark:   #2C2C2C;
-    --gray-mid:    #6B7280;
-    --gray-light:  #F4F6F8;
-    --white:       #FFFFFF;
-    --radius-sm:   6px;
-    --radius-md:   10px;
-    --radius-lg:   16px;
-    --shadow:      0 2px 8px rgba(0,0,0,0.08);
+    --green-dark:   #1B4F2A;
+    --green-mid:    #2E7D46;
+    --green-light:  #4CAF72;
+    --green-glow:   #3DBA63;
+    --green-pale:   #0D2E16;
+
+    --bg-base:      #0F1117;
+    --bg-card:      #1A1D27;
+    --bg-elevated:  #22263A;
+    --bg-hover:     #2A2F45;
+
+    --border:       #2D3148;
+    --border-light: #383D5A;
+
+    --text-primary:   #F0F2F8;
+    --text-secondary: #9BA3BF;
+    --text-muted:     #5C6280;
+
+    --radius-sm:  6px;
+    --radius-md:  12px;
+    --radius-lg:  18px;
+    --shadow-sm:  0 1px 4px rgba(0,0,0,0.4);
+    --shadow-md:  0 4px 16px rgba(0,0,0,0.5);
+    --shadow-glow: 0 0 20px rgba(61,186,99,0.15);
 }
+
+/* === BASE === */
 html, body, [class*="css"] {
     font-family: 'Inter', 'Segoe UI', system-ui, sans-serif !important;
+    color: var(--text-primary) !important;
 }
-.stApp { background-color: var(--gray-light); }
-.block-container { padding-top: 1.5rem !important; max-width: 920px !important; }
-#MainMenu { visibility: hidden; }
-footer { visibility: hidden; }
+.stApp { background-color: var(--bg-base) !important; }
+.block-container {
+    padding: 1.75rem 2rem 3rem 2rem !important;
+    max-width: 960px !important;
+}
+#MainMenu, footer, header { visibility: hidden; }
+
+/* Força texto claro em elementos Streamlit nativos */
+p, span, label, div, h1, h2, h3, h4, li { color: var(--text-primary); }
 
 /* === SIDEBAR === */
 section[data-testid="stSidebar"] {
-    background-color: var(--white) !important;
-    border-right: 1px solid #E5E7EB;
+    background-color: var(--bg-card) !important;
+    border-right: 1px solid var(--border) !important;
 }
-section[data-testid="stSidebar"] > div { padding-top: 0 !important; }
-
-/* === CHAT BUBBLES === */
-div[data-testid="stChatMessage"] {
-    border-radius: var(--radius-lg) !important;
-    padding: 1rem 1.25rem !important;
-    margin-bottom: 0.75rem !important;
-    box-shadow: var(--shadow);
+section[data-testid="stSidebar"] .stMarkdown p {
+    font-size: 0.85rem;
+    color: var(--text-secondary) !important;
 }
 
-/* === BUTTONS === */
-.stButton > button {
-    background-color: var(--white) !important;
-    color: var(--green-dark) !important;
-    border: 1.5px solid var(--green-mid) !important;
-    border-radius: var(--radius-md) !important;
-    font-weight: 500 !important;
-    transition: all 0.15s ease !important;
+/* === SIDEBAR HEADER === */
+.ifs-sidebar-header {
+    background: linear-gradient(150deg, #0D2E16 0%, var(--green-dark) 50%, var(--green-mid) 100%);
+    color: white;
+    padding: 1.75rem 1.25rem 1.5rem;
+    text-align: center;
+    margin-bottom: 1.25rem;
+    border-bottom: 1px solid var(--border);
 }
-.stButton > button:hover {
-    background-color: var(--green-pale) !important;
-    border-color: var(--green-dark) !important;
-}
-.stButton > button[kind="primary"] {
-    background-color: var(--green-dark) !important;
-    color: var(--white) !important;
-    border-color: var(--green-dark) !important;
-}
-.stButton > button[kind="primary"]:hover {
-    background-color: var(--green-mid) !important;
-}
+.ifs-sidebar-logo { font-size: 2.4rem; line-height: 1; margin-bottom: 0.5rem; }
+.ifs-sidebar-title { font-size: 1.05rem; font-weight: 700; margin: 0; letter-spacing: -0.01em; color: #fff !important; }
+.ifs-sidebar-subtitle { font-size: 0.62rem; opacity: 0.7; letter-spacing: 0.08em; text-transform: uppercase; margin-top: 0.2rem; color: #fff !important; }
 
-/* === METRICS === */
+/* === MÉTRICAS DA SIDEBAR === */
 div[data-testid="stMetric"] {
-    background-color: var(--white);
-    border-radius: var(--radius-md);
-    padding: 0.75rem 1rem !important;
-    box-shadow: var(--shadow);
+    background: var(--bg-elevated) !important;
+    border-radius: var(--radius-md) !important;
+    padding: 0.65rem 0.85rem !important;
+    border: 1px solid var(--border) !important;
 }
 div[data-testid="stMetricValue"] {
-    color: var(--green-dark) !important;
+    color: var(--green-glow) !important;
+    font-size: 1.1rem !important;
     font-weight: 700 !important;
+    line-height: 1.2 !important;
 }
 div[data-testid="stMetricLabel"] {
-    color: var(--gray-mid) !important;
-    font-size: 0.7rem !important;
+    color: var(--text-muted) !important;
+    font-size: 0.65rem !important;
     text-transform: uppercase;
     letter-spacing: 0.05em;
 }
 
-/* === CUSTOM COMPONENTS === */
-.ifs-sidebar-header {
-    background: linear-gradient(160deg, var(--green-dark) 0%, var(--green-mid) 100%);
-    color: white;
-    padding: 1.5rem 1rem 1.25rem 1rem;
-    margin: -1rem -1rem 1.25rem -1rem;
-    text-align: center;
+/* === BOTÕES === */
+.stButton > button {
+    background-color: var(--bg-elevated) !important;
+    color: var(--text-primary) !important;
+    border: 1.5px solid var(--border-light) !important;
+    border-radius: var(--radius-md) !important;
+    font-weight: 500 !important;
+    font-size: 0.85rem !important;
+    padding: 0.45rem 1rem !important;
+    transition: all 0.15s ease !important;
+    box-shadow: var(--shadow-sm) !important;
 }
-.ifs-sidebar-title { font-size: 1rem; font-weight: 700; margin-top: 0.4rem; }
-.ifs-sidebar-subtitle { font-size: 0.65rem; opacity: 0.8; letter-spacing: 0.06em; text-transform: uppercase; }
+.stButton > button:hover {
+    background-color: var(--bg-hover) !important;
+    border-color: var(--green-glow) !important;
+    color: var(--green-glow) !important;
+    box-shadow: var(--shadow-glow) !important;
+    transform: translateY(-1px) !important;
+}
+.stButton > button[kind="primary"] {
+    background: linear-gradient(135deg, var(--green-dark), var(--green-mid)) !important;
+    color: #fff !important;
+    border-color: transparent !important;
+    box-shadow: 0 2px 12px rgba(61,186,99,0.3) !important;
+}
+.stButton > button[kind="primary"]:hover {
+    box-shadow: 0 4px 20px rgba(61,186,99,0.45) !important;
+    transform: translateY(-1px) !important;
+}
 
+/* === CHAT === */
+div[data-testid="stChatMessage"] {
+    background-color: var(--bg-card) !important;
+    border-radius: var(--radius-lg) !important;
+    padding: 1rem 1.25rem !important;
+    margin-bottom: 0.6rem !important;
+    box-shadow: var(--shadow-sm) !important;
+    border: 1px solid var(--border) !important;
+}
+div[data-testid="stChatInput"] textarea {
+    background-color: var(--bg-card) !important;
+    border-radius: var(--radius-lg) !important;
+    border-color: var(--border-light) !important;
+    color: var(--text-primary) !important;
+    font-size: 0.9rem !important;
+}
+div[data-testid="stChatInput"] textarea:focus {
+    border-color: var(--green-glow) !important;
+    box-shadow: 0 0 0 3px rgba(61,186,99,0.15) !important;
+}
+
+/* === PAGE HEADER === */
 .ifs-page-header {
-    display: flex; align-items: center; gap: 0.75rem;
-    padding-bottom: 0.75rem; margin-bottom: 1rem;
-    border-bottom: 3px solid var(--green-light);
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding-bottom: 1rem;
+    margin-bottom: 1.25rem;
+    border-bottom: 1px solid var(--border);
 }
-.ifs-page-title { font-size: 1.5rem; font-weight: 700; color: var(--green-dark); margin: 0; }
-.ifs-page-subtitle { margin: 0; font-size: 0.8rem; color: var(--gray-mid); }
+.ifs-page-header-icon {
+    width: 48px; height: 48px;
+    background: linear-gradient(135deg, var(--green-dark), var(--green-mid));
+    border-radius: var(--radius-md);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1.6rem; flex-shrink: 0;
+    box-shadow: 0 2px 12px rgba(61,186,99,0.3);
+}
+.ifs-page-title { font-size: 1.45rem; font-weight: 800; color: var(--text-primary) !important; margin: 0; letter-spacing: -0.02em; }
+.ifs-page-subtitle { margin: 0.15rem 0 0 0; font-size: 0.8rem; color: var(--text-secondary) !important; }
 
+/* === BANNER DE ESTATÍSTICAS === */
 .ifs-stats-banner {
-    background: linear-gradient(135deg, var(--green-dark) 0%, var(--green-mid) 100%);
+    background: linear-gradient(135deg, #0D2E16 0%, var(--green-dark) 60%, #255c38 100%);
     color: white;
     border-radius: var(--radius-lg);
-    padding: 1.25rem 1.75rem;
+    padding: 1.5rem 2rem;
     margin-bottom: 1.5rem;
-    display: flex; gap: 0; flex-wrap: wrap;
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 0;
+    border: 1px solid rgba(61,186,99,0.2);
+    box-shadow: 0 4px 24px rgba(0,0,0,0.4), 0 0 0 1px rgba(61,186,99,0.1);
 }
 .ifs-stat-item {
-    flex: 1; min-width: 110px; text-align: center;
-    padding: 0 0.75rem;
-    border-right: 1px solid rgba(255,255,255,0.2);
+    text-align: center;
+    padding: 0.25rem 0.5rem;
+    border-right: 1px solid rgba(255,255,255,0.12);
 }
 .ifs-stat-item:last-child { border-right: none; }
-.ifs-stat-value { font-size: 1.65rem; font-weight: 700; line-height: 1.1; }
-.ifs-stat-label { font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.08em; opacity: 0.8; margin-top: 0.2rem; }
+.ifs-stat-value {
+    font-size: 1.6rem; font-weight: 800; line-height: 1.1;
+    letter-spacing: -0.02em; color: #fff !important;
+}
+.ifs-stat-label {
+    font-size: 0.62rem; text-transform: uppercase;
+    letter-spacing: 0.09em; opacity: 0.65; margin-top: 0.25rem; color: #fff !important;
+}
 
+/* === CARDS DE CONSULTA RÁPIDA === */
+.ifs-quick-card {
+    background: var(--bg-card);
+    border: 1.5px solid var(--border);
+    border-radius: var(--radius-md);
+    padding: 1rem 1rem 0.75rem 1rem;
+    transition: border-color 0.15s, box-shadow 0.15s, background 0.15s;
+    height: 100%;
+}
+.ifs-quick-card:hover {
+    border-color: var(--green-glow);
+    background: var(--bg-elevated);
+    box-shadow: var(--shadow-glow);
+}
+.ifs-quick-icon { font-size: 1.4rem; }
+.ifs-quick-title { font-weight: 700; font-size: 0.88rem; color: var(--text-primary) !important; margin: 0.3rem 0 0.2rem 0; }
+.ifs-quick-desc { font-size: 0.74rem; color: var(--text-secondary) !important; margin-bottom: 0.6rem; }
+
+div[data-testid="column"] .stButton > button {
+    font-size: 0.8rem !important;
+    padding: 0.35rem 0.75rem !important;
+    color: var(--green-glow) !important;
+    border-color: rgba(61,186,99,0.35) !important;
+    background: transparent !important;
+}
+div[data-testid="column"] .stButton > button:hover {
+    background: rgba(61,186,99,0.1) !important;
+    border-color: var(--green-glow) !important;
+}
+
+/* === TELA DE BOAS-VINDAS === */
+.ifs-welcome { text-align: center; padding: 1rem 0 1.25rem 0; }
+.ifs-welcome-title { font-size: 1.15rem; font-weight: 700; color: var(--text-primary) !important; margin-bottom: 0.3rem; }
+.ifs-welcome-sub { font-size: 0.85rem; color: var(--text-secondary) !important; }
+
+/* === BADGES E META === */
 .ifs-badge {
     display: inline-flex; align-items: center; gap: 5px;
     padding: 3px 10px; border-radius: 999px;
-    font-size: 0.72rem; font-weight: 600;
+    font-size: 0.71rem; font-weight: 600;
 }
-.ifs-badge-high   { background: #D4EDDA; color: #155724; }
-.ifs-badge-medium { background: #FFF3CD; color: #856404; }
-.ifs-badge-low    { background: #F8D7DA; color: #721C24; }
+.ifs-badge-high   { background: rgba(61,186,99,0.15); color: #4ADE80; border: 1px solid rgba(61,186,99,0.3); }
+.ifs-badge-medium { background: rgba(251,191,36,0.12); color: #FCD34D; border: 1px solid rgba(251,191,36,0.25); }
+.ifs-badge-low    { background: rgba(248,113,113,0.12); color: #F87171; border: 1px solid rgba(248,113,113,0.25); }
 
 .ifs-period {
     display: inline-flex; align-items: center; gap: 4px;
-    color: var(--gray-mid); font-size: 0.72rem;
-    background: var(--gray-light); border-radius: 999px;
-    padding: 3px 9px;
+    color: var(--text-secondary); font-size: 0.71rem;
+    background: var(--bg-elevated); border-radius: 999px;
+    padding: 3px 10px; border: 1px solid var(--border);
 }
 
 .ifs-response-meta {
     display: flex; align-items: center; flex-wrap: wrap; gap: 6px;
-    margin-top: 0.85rem; padding-top: 0.75rem;
-    border-top: 1px solid #E5E7EB;
+    margin-top: 0.9rem; padding-top: 0.75rem;
+    border-top: 1px solid var(--border);
 }
+.ifs-response-source { font-size: 0.67rem; color: var(--text-muted); margin-left: auto; }
 
-.ifs-quick-card {
-    background: var(--white);
-    border: 1.5px solid #E5E7EB;
-    border-radius: var(--radius-md);
-    padding: 0.9rem 1rem 0.4rem 1rem;
-    margin-bottom: 0;
-}
-.ifs-quick-icon { font-size: 1.3rem; }
-.ifs-quick-title { font-weight: 600; font-size: 0.875rem; color: var(--gray-dark); margin: 0.2rem 0 0.15rem 0; }
-.ifs-quick-desc { font-size: 0.73rem; color: var(--gray-mid); }
-
-.ifs-welcome {
-    text-align: center; padding: 1.25rem 0 0.75rem 0;
-}
-.ifs-welcome-title { font-size: 1.1rem; font-weight: 600; color: var(--green-dark); margin-bottom: 0.25rem; }
-.ifs-welcome-sub { font-size: 0.85rem; color: var(--gray-mid); }
-
+/* === GRÁFICO DE BARRAS === */
 .ifs-bar-chart {
-    background: var(--white);
+    background: var(--bg-elevated);
     border-radius: var(--radius-md);
     padding: 1rem 1.25rem;
     margin-top: 0.75rem;
-    box-shadow: var(--shadow);
+    border: 1px solid var(--border);
+}
+.ifs-bar-section-label {
+    font-size: 0.65rem; color: var(--text-muted);
+    text-transform: uppercase; letter-spacing: 0.07em;
+    margin-bottom: 0.75rem; font-weight: 600;
 }
 .ifs-bar-label-row {
-    display: flex; justify-content: space-between;
-    font-size: 0.78rem; margin-bottom: 3px;
+    display: flex; justify-content: space-between; align-items: baseline;
+    font-size: 0.78rem; margin-bottom: 4px;
+    color: var(--text-primary);
 }
-.ifs-bar-track { background: #E5E7EB; border-radius: 999px; height: 7px; }
-.ifs-bar-fill { background: var(--green-mid); height: 7px; border-radius: 999px; }
-.ifs-bar-row { margin-bottom: 0.65rem; }
+.ifs-bar-track { background: var(--border); border-radius: 999px; height: 6px; overflow: hidden; }
+.ifs-bar-fill { background: linear-gradient(90deg, var(--green-mid), var(--green-glow)); height: 6px; border-radius: 999px; }
+.ifs-bar-row { margin-bottom: 0.7rem; }
+.ifs-bar-row:last-child { margin-bottom: 0; }
 
+/* === STATUS / SPINNER === */
+div[data-testid="stStatus"] {
+    background: var(--bg-card) !important;
+    border-radius: var(--radius-md) !important;
+    border-color: var(--border) !important;
+    color: var(--text-secondary) !important;
+    font-size: 0.85rem !important;
+}
+
+/* === EXPANDERS === */
+details[data-testid="stExpander"] {
+    background: var(--bg-card) !important;
+    border: 1px solid var(--border) !important;
+    border-radius: var(--radius-md) !important;
+}
+details[data-testid="stExpander"] summary {
+    font-size: 0.85rem !important;
+    font-weight: 600 !important;
+    color: var(--text-primary) !important;
+}
+
+/* === DIVISOR === */
+hr { border-color: var(--border) !important; margin: 0.75rem 0 !important; }
+
+/* === SCROLLBAR === */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: var(--bg-base); }
+::-webkit-scrollbar-thumb { background: var(--border-light); border-radius: 999px; }
+::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
+
+/* === RESPONSIVO === */
 @media (max-width: 768px) {
-    .ifs-stats-banner { gap: 0.75rem; }
-    .ifs-stat-value { font-size: 1.25rem; }
-    .ifs-stat-item { border-right: none; border-bottom: 1px solid rgba(255,255,255,0.15); padding-bottom: 0.5rem; }
-    .ifs-stat-item:last-child { border-bottom: none; }
+    .block-container { padding: 1rem !important; }
+    .ifs-stats-banner {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 0.75rem;
+        padding: 1.25rem;
+    }
+    .ifs-stat-item { border-right: none; }
+    .ifs-stat-value { font-size: 1.3rem; }
+    .ifs-page-title { font-size: 1.2rem; }
 }
 </style>
 """)
@@ -339,9 +472,7 @@ def render_response_meta(confidence: float, period_start: Optional[str], period_
     <div class="ifs-response-meta">
         {badge}
         {period}
-        <span style="font-size:0.68rem; color:var(--gray-mid); margin-left:auto">
-            Fonte: Portal da Transparência IFS
-        </span>
+        <span class="ifs-response-source">Fonte: Portal da Transparência IFS</span>
     </div>
     """, unsafe_allow_html=True)
 
@@ -443,8 +574,7 @@ def try_render_bar_chart(result_text: str) -> bool:
 
         st.markdown(f"""
         <div class="ifs-bar-chart">
-            <p style="font-size:0.68rem;color:var(--gray-mid);text-transform:uppercase;
-                      letter-spacing:0.07em;margin-bottom:0.75rem">Visualização</p>
+            <p class="ifs-bar-section-label">Visualização</p>
             {rows_html}
         </div>
         """, unsafe_allow_html=True)
@@ -557,9 +687,9 @@ def process_input(user_input: str):
 with st.sidebar:
     st.markdown("""
     <div class="ifs-sidebar-header">
-        <div style="font-size:2.2rem">🏛️</div>
-        <div class="ifs-sidebar-title">IFS Transparência</div>
-        <div class="ifs-sidebar-subtitle">Instituto Federal de Sergipe</div>
+        <div class="ifs-sidebar-logo">🏛️</div>
+        <p class="ifs-sidebar-title">IFS Transparência</p>
+        <p class="ifs-sidebar-subtitle">Instituto Federal de Sergipe</p>
     </div>
     """, unsafe_allow_html=True)
 
@@ -645,7 +775,7 @@ if "feedback" not in st.session_state:
 # Header
 st.markdown("""
 <div class="ifs-page-header">
-    <span style="font-size:1.85rem">🏛️</span>
+    <div class="ifs-page-header-icon">🏛️</div>
     <div>
         <p class="ifs-page-title">IFS Transparência Inteligente</p>
         <p class="ifs-page-subtitle">Consulte gastos públicos do Instituto Federal de Sergipe em linguagem natural</p>

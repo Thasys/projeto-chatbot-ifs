@@ -1,4 +1,4 @@
-import os
+﻿import os
 import requests
 import pandas as pd
 import time
@@ -57,36 +57,41 @@ class DataExtractor:
                 )
 
                 if response.status_code == 200:
-                    return response.json()
+                    if not response.content or not response.text.strip():
+                        return []
+                    try:
+                        return response.json()
+                    except Exception:
+                        return []
 
                 elif response.status_code == 429:  # Rate Limit
                     tempo_espera = min(2 ** tentativa * 10, 300)  # Max 5 min
                     logger.warning(
-                        f"⏳ Rate Limit! Aguardando {tempo_espera}s...")
+                        f"[AGUARDANDO] Rate Limit! Aguardando {tempo_espera}s...")
                     time.sleep(tempo_espera)
 
                 elif response.status_code == 500:
                     tempo_espera = min(2 ** tentativa * 5, 60)
                     logger.warning(
-                        f"❌ Erro 500 da API. Tentativa {tentativa + 1}/{max_retries}. Aguardando {tempo_espera}s...")
+                        f"[ERRO] Erro 500 da API. Tentativa {tentativa + 1}/{max_retries}. Aguardando {tempo_espera}s...")
                     time.sleep(tempo_espera)
 
                 else:
                     logger.error(
-                        f"❌ Erro {response.status_code}: {response.text}")
+                        f"[ERRO] Erro {response.status_code}: {response.text}")
                     return None
 
             except requests.Timeout:
                 logger.warning(
-                    f"⏱️ Timeout na tentativa {tentativa + 1}/{max_retries}")
+                    f"⏱ Timeout na tentativa {tentativa + 1}/{max_retries}")
                 time.sleep(min(2 ** tentativa * 5, 60))
 
             except requests.ConnectionError as e:
                 logger.warning(
-                    f"🔌 Erro de conexão: {e}. Tentativa {tentativa + 1}/{max_retries}")
+                    f"[CONEXAO] Erro de conexão: {e}. Tentativa {tentativa + 1}/{max_retries}")
                 time.sleep(min(2 ** tentativa * 5, 60))
 
-        logger.error(f"❌ Falha após {max_retries} tentativas")
+        logger.error(f"[ERRO] Falha após {max_retries} tentativas")
         return None
 
     # ========== MELHORIA 2: GERAÇÃO DE DATAS COM VALIDAÇÃO ==========
@@ -111,11 +116,11 @@ class DataExtractor:
                 lista_datas.append(dia.strftime("%d/%m/%Y"))
 
             logger.info(
-                f"📅 Período: {Config.DATA_INICIO} até {Config.DATA_FIM} ({total_dias} dias)")
+                f"[DATA] Período: {Config.DATA_INICIO} até {Config.DATA_FIM} ({total_dias} dias)")
             return lista_datas
 
         except ValueError as e:
-            logger.error(f"❌ Erro na geração de datas: {e}")
+            logger.error(f"[ERRO] Erro na geração de datas: {e}")
             return []
 
     # ========== MELHORIA 3: DETECÇÃO DE DUPLICATAS ==========
@@ -133,7 +138,7 @@ class DataExtractor:
 
             if id_unico in self.registros_ids:
                 duplicatas += 1
-                logger.debug(f"🔄 Duplicata detectada: {id_unico}")
+                logger.debug(f"[RETRY] Duplicata detectada: {id_unico}")
             else:
                 self.registros_ids.add(id_unico)
                 dados_filtrados.append(registro)
@@ -147,12 +152,12 @@ class DataExtractor:
         Valida se um registro da API contém campos obrigatórios.
         """
         campos_obrigatorios = ['documento', 'valor',
-                               'dataEmissao', 'codigoUg', 'ug']
+                               'data', 'codigoUg', 'ug']
 
         for campo in campos_obrigatorios:
             if campo not in registro or registro[campo] is None or str(registro[campo]).strip() == '':
                 logger.warning(
-                    f"⚠️ Campo obrigatório ausente: {campo} em {registro.get('documento', 'N/A')}")
+                    f"[AVISO] Campo obrigatório ausente: {campo} em {registro.get('documento', 'N/A')}")
                 return False
 
         return True
@@ -164,13 +169,13 @@ class DataExtractor:
         """
         inicio = time.time()
         logger.info("=" * 80)
-        logger.info("🚀 INICIANDO EXTRAÇÃO DE DADOS")
+        logger.info("[INICIO] INICIANDO EXTRAÇÃO DE DADOS")
         logger.info("=" * 80)
 
         dias = self._gerar_datas()
         if not dias:
             logger.error(
-                "❌ Nenhuma data gerada. Verifique Config.DATA_INICIO e Config.DATA_FIM")
+                "[ERRO] Nenhuma data gerada. Verifique Config.DATA_INICIO e Config.DATA_FIM")
             return pd.DataFrame()
 
         todos_dados = []
@@ -193,14 +198,14 @@ class DataExtractor:
                     params["unidadeGestora"] = Config.UNIDADE_GESTORA
 
                 logger.info(
-                    f"📥 [{idx_dia}/{len(dias)}] {dia} | Página {pagina}...")
+                    f"[ETL] [{idx_dia}/{len(dias)}] {dia} | Página {pagina}...")
 
                 # MELHORIA 1: Retry com backoff
                 dados = self._requisicao_com_retry(params)
 
                 if dados is None:
                     logger.warning(
-                        f"⚠️ Falha ao extrair {dia} página {pagina}. Continuando...")
+                        f"[AVISO] Falha ao extrair {dia} página {pagina}. Continuando...")
                     self.relatorio_extracao['erros_api'].append({
                         'data': dia,
                         'pagina': pagina,
@@ -209,7 +214,7 @@ class DataExtractor:
                     break
 
                 if not dados:
-                    logger.info(f"✅ Fim das páginas para {dia}")
+                    logger.info(f"[OK] Fim das páginas para {dia}")
                     break
 
                 # MELHORIA 3: Detecção de duplicatas
@@ -217,7 +222,7 @@ class DataExtractor:
 
                 if dup_count > 0:
                     logger.warning(
-                        f"🔄 {dup_count} duplicatas removidas em {dia} página {pagina}")
+                        f"[RETRY] {dup_count} duplicatas removidas em {dia} página {pagina}")
 
                 # MELHORIA 4: Validação de registros
                 for registro in dados_unicos:
@@ -229,7 +234,7 @@ class DataExtractor:
 
                 dados_do_dia += len(dados_unicos)
                 logger.info(
-                    f"   ✅ {len(dados_unicos)} registros da página {pagina}")
+                    f"   [OK] {len(dados_unicos)} registros da página {pagina}")
 
                 pagina += 1
 
@@ -257,22 +262,22 @@ class DataExtractor:
                 self.relatorio_extracao['registros_extraidos'] = len(df)
 
                 logger.info("=" * 80)
-                logger.info("✅ EXTRAÇÃO CONCLUÍDA COM SUCESSO!")
-                logger.info(f"📊 Registros extraídos: {registros_validos}")
-                logger.info(f"⚠️ Registros inválidos: {registros_invalidos}")
+                logger.info("[OK] EXTRAÇÃO CONCLUÍDA COM SUCESSO!")
+                logger.info(f"[GRAFICO] Registros extraídos: {registros_validos}")
+                logger.info(f"[AVISO] Registros inválidos: {registros_invalidos}")
                 logger.info(f"📂 Arquivo: {nome_arquivo}")
-                logger.info(f"⏱️ Tempo total: {tempo_decorrido:.2f}s")
+                logger.info(f"⏱ Tempo total: {tempo_decorrido:.2f}s")
                 logger.info("=" * 80)
-                logger.info(f"📋 Relatório: {self.relatorio_extracao}")
+                logger.info(f"[LISTA] Relatório: {self.relatorio_extracao}")
 
                 return df
 
             except Exception as e:
-                logger.error(f"❌ Erro ao salvar arquivo: {e}")
+                logger.error(f"[ERRO] Erro ao salvar arquivo: {e}")
                 return pd.DataFrame()
 
         else:
-            logger.warning("⚠️ Nenhum dado extraído no período especificado")
+            logger.warning("[AVISO] Nenhum dado extraído no período especificado")
             return pd.DataFrame()
 
     # ========== MELHORIA 6: CARREGAR BACKUP LOCAL (para testes) ==========
@@ -284,14 +289,14 @@ class DataExtractor:
         logger.info(f"📂 Buscando dados locais em: {Config.CAMINHO_SALVAMENTO}")
 
         if not os.path.exists(Config.CAMINHO_SALVAMENTO):
-            logger.error("❌ Pasta de dados não encontrada")
+            logger.error("[ERRO] Pasta de dados não encontrada")
             return pd.DataFrame()
 
         arquivos = [f for f in os.listdir(Config.CAMINHO_SALVAMENTO)
                     if f.startswith("backup_raw_") and f.endswith(".csv")]
 
         if not arquivos:
-            logger.error("❌ Nenhum arquivo de backup encontrado")
+            logger.error("[ERRO] Nenhum arquivo de backup encontrado")
             return pd.DataFrame()
 
         arquivos.sort(reverse=True)
@@ -303,9 +308,9 @@ class DataExtractor:
             logger.info(f"📂 Carregando: {arquivo_recente}")
             df = pd.read_csv(caminho_completo, sep=';', encoding='utf-8-sig')
 
-            logger.info(f"✅ {len(df)} registros carregados do disco")
+            logger.info(f"[OK] {len(df)} registros carregados do disco")
             return df
 
         except Exception as e:
-            logger.error(f"❌ Erro ao ler arquivo: {e}")
+            logger.error(f"[ERRO] Erro ao ler arquivo: {e}")
             return pd.DataFrame()
