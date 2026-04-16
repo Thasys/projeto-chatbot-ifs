@@ -28,11 +28,11 @@ st.set_page_config(
 )
 
 # ========== DESIGN SYSTEM ==========
-# st.html() renderiza HTML puro sem processar como Markdown — necessário para <style>
-st.html("""
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+# st.markdown() com unsafe_allow_html=True injeta o CSS diretamente no documento principal,
+# garantindo que as classes e variáveis CSS estejam disponíveis em todos os elementos da página.
+st.markdown("""
 <style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
 /* === VARIÁVEIS — TEMA ESCURO === */
 :root {
     --green-dark:   #1B4F2A;
@@ -368,7 +368,7 @@ hr { border-color: var(--border) !important; margin: 0.75rem 0 !important; }
     .ifs-page-title { font-size: 1.2rem; }
 }
 </style>
-""")
+""", unsafe_allow_html=True)
 
 # ========== MENSAGENS DE ERRO ==========
 ERRO_MENSAGENS = {
@@ -679,8 +679,8 @@ def try_render_bar_chart(result_text: str) -> bool:
             rows_html += f"""
             <div class="ifs-bar-row">
                 <div class="ifs-bar-label-row">
-                    <span style="color:var(--gray-dark)">{label}</span>
-                    <span style="color:var(--green-dark);font-weight:600">{val_display}</span>
+                    <span style="color:var(--text-primary)">{label}</span>
+                    <span style="color:var(--green-glow);font-weight:600">{val_display}</span>
                 </div>
                 <div class="ifs-bar-track">
                     <div class="ifs-bar-fill" style="width:{pct:.1f}%"></div>
