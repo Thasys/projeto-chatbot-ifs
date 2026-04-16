@@ -441,6 +441,17 @@ MONTHS_PT = ["Jan","Fev","Mar","Abr","Mai","Jun",
              "Jul","Ago","Set","Out","Nov","Dez"]
 
 
+def fmt_br(value: float, decimals: int = 0, prefix: str = "") -> str:
+    """Formata número no padrão brasileiro: ponto para milhar, vírgula para decimal.
+    Ex: 1234567.89 → 'R$ 1.234.567,89'
+    """
+    formatted = f"{value:,.{decimals}f}"          # Ex: "1,234,567.89" (EN)
+    formatted = formatted.replace(",", "X")        # Ex: "1X234X567.89"
+    formatted = formatted.replace(".", ",")        # Ex: "1X234X567,89"
+    formatted = formatted.replace("X", ".")        # Ex: "1.234.567,89"
+    return f"{prefix}{formatted}"
+
+
 def render_confidence_badge(confidence: float) -> str:
     if confidence >= 80:
         cls, icon, label = "ifs-badge-high", "✓", f"Alta confiança ({confidence:.0f}%)"
@@ -699,10 +710,10 @@ with st.sidebar:
         valor_m = stats_sidebar['total_valor'] / 1_000_000
         col_a, col_b = st.columns(2)
         with col_a:
-            st.metric("Transações", f"{int(stats_sidebar['total_transacoes']):,}".replace(",", "."))
+            st.metric("Transações", fmt_br(stats_sidebar['total_transacoes']))
             st.metric("Período", f"{stats_sidebar['ano_inicio']}–{stats_sidebar['ano_fim']}")
         with col_b:
-            st.metric("Volume", f"R${valor_m:.0f}M")
+            st.metric("Volume", f"R$ {fmt_br(valor_m, decimals=1)}M")
             st.metric("Unidades", int(stats_sidebar['total_campi']))
     except Exception:
         pass
@@ -786,8 +797,8 @@ st.markdown("""
 # Banner de estatísticas
 try:
     stats = get_db_stats()
-    valor_fmt   = f"R$ {stats['total_valor']/1_000_000:.1f}M"
-    trans_fmt   = f"{int(stats['total_transacoes']):,}".replace(",", ".")
+    valor_fmt   = f"R$ {fmt_br(stats['total_valor'] / 1_000_000, decimals=1)}M"
+    trans_fmt   = fmt_br(stats['total_transacoes'])
     periodo_fmt = f"{stats['ano_inicio']}–{stats['ano_fim']}"
     campi_fmt   = str(int(stats['total_campi']))
 
