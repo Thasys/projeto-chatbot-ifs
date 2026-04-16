@@ -65,5 +65,34 @@
       "nome completo de"
     ],
     "resposta": "Não forneço dados pessoais identificáveis de indivíduos. Os dados disponíveis são agregados e referem-se a entidades (empresas, órgãos) conforme publicado no Portal da Transparência do IFS."
+  },
+  {
+    "id": "folha_explicacao",
+    "gatilhos": [
+      "por que banco aparece",
+      "porque banco aparece",
+      "banco como fornecedor",
+      "banco do brasil fornecedor",
+      "caixa fornecedor",
+      "por que o banco",
+      "porque o banco"
+    ],
+    "resposta": "Os bancos (Banco do Brasil, Caixa Econômica, etc.) aparecem porque o governo paga a folha de pagamento dos servidores via Ordem Bancária (OB): um único repasse ao banco, que distribui para cada conta. O sistema identifica esses repasses automaticamente pela categoria 'Folha de Pagamento', separando-os dos fornecedores reais de bens e serviços. Pergunte 'Quais os maiores fornecedores?' para ver apenas empresas contratadas, ou 'Qual o total da folha?' para ver os repasses de pessoal."
+  },
+  {
+    "id": "folha_orientacao",
+    "gatilhos": [
+      "quanto gasta com salario",
+      "quanto gasta com salário",
+      "total da folha",
+      "gasto com servidores",
+      "quanto paga de salario",
+      "quanto paga de salário",
+      "custo com pessoal",
+      "despesa com pessoal",
+      "folha de pagamento total",
+      "massa salarial"
+    ],
+    "resposta": "Para consultar a folha de pagamento, experimente perguntar: 'Qual o total gasto com folha de pagamento em 2025?' ou 'Quanto cada campus gasta com folha?' O sistema separa automaticamente os repasses de pessoal dos gastos com fornecedores."
   }
 ]

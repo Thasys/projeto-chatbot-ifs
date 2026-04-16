@@ -324,6 +324,31 @@ details[data-testid="stExpander"] summary {
 /* === DIVISOR === */
 hr { border-color: var(--border) !important; margin: 0.75rem 0 !important; }
 
+/* === PAINEL DE BREAKDOWN === */
+.ifs-breakdown {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 1.25rem 1.75rem;
+    margin-bottom: 1.5rem;
+}
+.ifs-breakdown-title {
+    font-size: 0.68rem; font-weight: 600; text-transform: uppercase;
+    letter-spacing: 0.08em; color: var(--text-muted); margin-bottom: 1rem;
+}
+.ifs-bk-row { margin-bottom: 0.85rem; }
+.ifs-bk-row:last-child { margin-bottom: 0; }
+.ifs-bk-header {
+    display: flex; justify-content: space-between; align-items: baseline;
+    margin-bottom: 5px;
+}
+.ifs-bk-label { font-size: 0.82rem; font-weight: 600; color: var(--text-primary); display: flex; align-items: center; gap: 6px; }
+.ifs-bk-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; flex-shrink: 0; }
+.ifs-bk-values { font-size: 0.78rem; color: var(--text-secondary); }
+.ifs-bk-values strong { color: var(--text-primary); font-weight: 600; }
+.ifs-bk-track { background: var(--border); border-radius: 999px; height: 7px; overflow: hidden; }
+.ifs-bk-fill  { height: 7px; border-radius: 999px; }
+
 /* === SCROLLBAR === */
 ::-webkit-scrollbar { width: 6px; height: 6px; }
 ::-webkit-scrollbar-track { background: var(--bg-base); }
@@ -359,26 +384,26 @@ QUICK_ACTIONS = [
     {
         "icon": "🏆",
         "title": "Top 5 Fornecedores",
-        "description": "Quem mais recebeu pagamentos do IFS",
-        "query": "Quais são os 5 maiores fornecedores de 2024?"
+        "description": "Empresas e serviços contratados pelo IFS",
+        "query": "Quais são os 5 maiores fornecedores do IFS em 2025?"
+    },
+    {
+        "icon": "💼",
+        "title": "Folha de Pagamento",
+        "description": "Total de repasses de pessoal por campus",
+        "query": "Quanto cada campus gasta com folha de pagamento em 2025?"
     },
     {
         "icon": "🏫",
         "title": "Gastos por Campus",
         "description": "Total de despesas por unidade do IFS",
-        "query": "Qual o gasto total de cada campus em 2024?"
-    },
-    {
-        "icon": "⚡",
-        "title": "Energia Elétrica",
-        "description": "Pagamentos ao fornecedor de energia",
-        "query": "Quanto foi pago para Energisa em 2024?"
+        "query": "Qual o gasto total de cada campus em 2025?"
     },
     {
         "icon": "📊",
-        "title": "Volume Total IFS",
-        "description": "Soma de todas as despesas do período",
-        "query": "Qual o valor total gasto pelo IFS em 2024?"
+        "title": "Resumo por Categoria",
+        "description": "Folha, fornecedores e repasses separados",
+        "query": "Como se divide o orçamento do IFS entre folha e custeio em 2025?"
     }
 ]
 
@@ -413,14 +438,14 @@ def init_audit_logging():
 def get_db_stats():
     """Busca estatísticas do banco para o banner. Cache de 1 hora."""
     try:
-        db = DBConnection()  # singleton — não chama cache_resource dentro de cache_data
+        db = DBConnection()
         result = db.execute_query("""
             SELECT
-                COUNT(*)          AS total_transacoes,
-                COALESCE(SUM(valor), 0) AS total_valor,
-                MIN(YEAR(data))   AS ano_inicio,
-                MAX(YEAR(data))   AS ano_fim,
-                COUNT(DISTINCT id_ug) AS total_campi
+                COUNT(*)                  AS total_transacoes,
+                COALESCE(SUM(valor), 0)   AS total_valor,
+                MIN(YEAR(data))           AS ano_inicio,
+                MAX(YEAR(data))           AS ano_fim,
+                COUNT(DISTINCT id_ug)     AS total_campi
             FROM v_financas_geral
         """)
         if result and result[0].get('total_transacoes'):
@@ -428,17 +453,97 @@ def get_db_stats():
     except Exception as e:
         logger.warning(f"Erro ao carregar stats: {e}")
     return {
-        'total_transacoes': 13194,
-        'total_valor': 424940126.35,
-        'ano_inicio': 2024,
+        'total_transacoes': 5844,
+        'total_valor': 190580215.96,
+        'ano_inicio': 2025,
         'ano_fim': 2025,
         'total_campi': 10
+    }
+
+
+@st.cache_data(ttl=3600)
+def get_breakdown_stats():
+    """Busca o breakdown por categoria (Folha / Fornecedor / Repasse). Cache de 1 hora."""
+    try:
+        db = DBConnection()
+        rows = db.execute_query("""
+            SELECT categoria, COALESCE(SUM(valor), 0) AS total
+            FROM v_financas_classificada
+            GROUP BY categoria
+        """)
+        result = {r['categoria']: float(r['total']) for r in rows}
+        return result
+    except Exception as e:
+        logger.warning(f"Erro ao carregar breakdown: {e}")
+    return {
+        'FOLHA_DE_PAGAMENTO': 167906506.54,
+        'FORNECEDOR':          22644691.71,
+        'REPASSE_INTERNO':        29017.71,
     }
 
 # ========== HELPERS DE RENDERIZAÇÃO ==========
 
 MONTHS_PT = ["Jan","Fev","Mar","Abr","Mai","Jun",
              "Jul","Ago","Set","Out","Nov","Dez"]
+
+# Configuração visual de cada categoria
+CATEGORIA_CONFIG = {
+    "FOLHA_DE_PAGAMENTO": {
+        "label": "Folha de Pagamento",
+        "desc":  "Salários, aposentadorias e encargos via bancos",
+        "color": "#3DBA63",
+    },
+    "FORNECEDOR": {
+        "label": "Fornecedores",
+        "desc":  "Empresas e prestadores de bens e serviços",
+        "color": "#60A5FA",
+    },
+    "REPASSE_INTERNO": {
+        "label": "Repasses Internos",
+        "desc":  "Transferências entre unidades do IFS",
+        "color": "#F59E0B",
+    },
+}
+
+
+def render_breakdown_panel() -> None:
+    """Renderiza painel com distribuição Folha / Fornecedores / Repasses."""
+    try:
+        bk = get_breakdown_stats()
+        total = sum(bk.values()) or 1
+
+        rows_html = ""
+        for key in ["FOLHA_DE_PAGAMENTO", "FORNECEDOR", "REPASSE_INTERNO"]:
+            val   = bk.get(key, 0)
+            pct   = val / total * 100
+            cfg   = CATEGORIA_CONFIG[key]
+            val_m = fmt_br(val / 1_000_000, decimals=1)
+            rows_html += f"""
+            <div class="ifs-bk-row">
+                <div class="ifs-bk-header">
+                    <span class="ifs-bk-label">
+                        <span class="ifs-bk-dot" style="background:{cfg['color']}"></span>
+                        {cfg['label']}
+                        <span style="font-size:0.72rem;font-weight:400;color:var(--text-muted)">— {cfg['desc']}</span>
+                    </span>
+                    <span class="ifs-bk-values">
+                        <strong>R$ {val_m}M</strong>&nbsp;&nbsp;{pct:.1f}%
+                    </span>
+                </div>
+                <div class="ifs-bk-track">
+                    <div class="ifs-bk-fill" style="width:{pct:.1f}%;background:{cfg['color']}"></div>
+                </div>
+            </div>
+            """
+
+        st.markdown(f"""
+        <div class="ifs-breakdown">
+            <p class="ifs-breakdown-title">Distribuição do Orçamento</p>
+            {rows_html}
+        </div>
+        """, unsafe_allow_html=True)
+    except Exception as e:
+        logger.warning(f"Erro ao renderizar breakdown: {e}")
 
 
 def fmt_br(value: float, decimals: int = 0, prefix: str = "") -> str:
@@ -824,6 +929,9 @@ try:
     """, unsafe_allow_html=True)
 except Exception:
     pass
+
+# Painel de distribuição orçamentária
+render_breakdown_panel()
 
 # ========== CAPTURAR QUERY PENDENTE (antes de qualquer coluna) ==========
 # Quick actions salvam a query aqui para ser processada fora do contexto de coluna
