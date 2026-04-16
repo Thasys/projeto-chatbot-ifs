@@ -536,12 +536,12 @@ def render_breakdown_panel() -> None:
             </div>
             """
 
-        st.markdown(f"""
+        st.html(f"""
         <div class="ifs-breakdown">
             <p class="ifs-breakdown-title">Distribuição do Orçamento</p>
             {rows_html}
         </div>
-        """, unsafe_allow_html=True)
+        """)
     except Exception as e:
         logger.warning(f"Erro ao renderizar breakdown: {e}")
 
@@ -584,13 +584,13 @@ def render_period_chip(period_start: Optional[str], period_end: Optional[str]) -
 def render_response_meta(confidence: float, period_start: Optional[str], period_end: Optional[str]) -> None:
     badge = render_confidence_badge(confidence)
     period = render_period_chip(period_start, period_end)
-    st.markdown(f"""
+    st.html(f"""
     <div class="ifs-response-meta">
         {badge}
         {period}
         <span class="ifs-response-source">Fonte: Portal da Transparência IFS</span>
     </div>
-    """, unsafe_allow_html=True)
+    """)
 
 
 def render_feedback_buttons(message_index: int) -> None:
@@ -606,9 +606,9 @@ def render_feedback_buttons(message_index: int) -> None:
                 st.session_state.feedback[message_index] = "negative"
                 st.rerun()
     elif current == "positive":
-        st.markdown('<span style="font-size:0.75rem;color:#155724">👍 Obrigado pelo feedback!</span>', unsafe_allow_html=True)
+        st.html('<span style="font-size:0.75rem;color:#155724">👍 Obrigado pelo feedback!</span>')
     else:
-        st.markdown('<span style="font-size:0.75rem;color:#856404">👎 Obrigado! Vamos melhorar.</span>', unsafe_allow_html=True)
+        st.html('<span style="font-size:0.75rem;color:#856404">👎 Obrigado! Vamos melhorar.</span>')
 
 
 def try_render_bar_chart(result_text: str) -> bool:
@@ -688,12 +688,12 @@ def try_render_bar_chart(result_text: str) -> bool:
             </div>
             """
 
-        st.markdown(f"""
+        st.html(f"""
         <div class="ifs-bar-chart">
             <p class="ifs-bar-section-label">Visualização</p>
             {rows_html}
         </div>
-        """, unsafe_allow_html=True)
+        """)
         return True
     except Exception:
         return False
@@ -801,13 +801,13 @@ def process_input(user_input: str):
 
 # ========== SIDEBAR ==========
 with st.sidebar:
-    st.markdown("""
+    st.html("""
     <div class="ifs-sidebar-header">
         <div class="ifs-sidebar-logo">🏛️</div>
         <p class="ifs-sidebar-title">IFS Transparência</p>
         <p class="ifs-sidebar-subtitle">Instituto Federal de Sergipe</p>
     </div>
-    """, unsafe_allow_html=True)
+    """)
 
     # Estatísticas do banco
     try:
@@ -889,7 +889,7 @@ if "feedback" not in st.session_state:
     st.session_state.feedback = {}
 
 # Header
-st.markdown("""
+st.html("""
 <div class="ifs-page-header">
     <div class="ifs-page-header-icon">🏛️</div>
     <div>
@@ -897,7 +897,7 @@ st.markdown("""
         <p class="ifs-page-subtitle">Consulte gastos públicos do Instituto Federal de Sergipe em linguagem natural</p>
     </div>
 </div>
-""", unsafe_allow_html=True)
+""")
 
 # Banner de estatísticas
 try:
@@ -907,7 +907,7 @@ try:
     periodo_fmt = f"{stats['ano_inicio']}–{stats['ano_fim']}"
     campi_fmt   = str(int(stats['total_campi']))
 
-    st.markdown(f"""
+    st.html(f"""
     <div class="ifs-stats-banner">
         <div class="ifs-stat-item">
             <div class="ifs-stat-value">{valor_fmt}</div>
@@ -926,7 +926,7 @@ try:
             <div class="ifs-stat-label">Campi e Unidades</div>
         </div>
     </div>
-    """, unsafe_allow_html=True)
+    """)
 except Exception:
     pass
 
@@ -942,25 +942,25 @@ if 'pending_query' in st.session_state:
 
 # ========== TELA INICIAL ==========
 if len(st.session_state.messages) == 0 and not _pending_query:
-    st.markdown("""
+    st.html("""
     <div class="ifs-welcome">
         <p class="ifs-welcome-title">👋 Como posso ajudar?</p>
         <p class="ifs-welcome-sub">Digite sua pergunta abaixo ou escolha uma das consultas populares:</p>
     </div>
-    """, unsafe_allow_html=True)
+    """)
 
     col1, col2 = st.columns(2, gap="small")
     cols = [col1, col2, col1, col2]
 
     for i, action in enumerate(QUICK_ACTIONS):
         with cols[i]:
-            st.markdown(f"""
+            st.html(f"""
             <div class="ifs-quick-card">
                 <span class="ifs-quick-icon">{action['icon']}</span>
                 <p class="ifs-quick-title">{action['title']}</p>
                 <p class="ifs-quick-desc">{action['description']}</p>
             </div>
-            """, unsafe_allow_html=True)
+            """)
             if st.button("Consultar →", key=f"qa_{i}", use_container_width=True):
                 # Salva e faz rerun — process_input será chamado fora das colunas
                 st.session_state['pending_query'] = action['query']
